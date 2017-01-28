@@ -1,4 +1,6 @@
-module Interpreter where
+module Evaluation (
+	evaluate
+) where
 
 -- Syntax
 import Syntax
@@ -223,67 +225,3 @@ evaluate e@(GreaterEqualTo expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 >= i2)
-
-type Substitution = (String, Expression)
-
--- Substitute expressions according to substitution
-substitute :: Substitution -> Expression -> Expression
--- if the expression is a variable
-substitute s@(old, new) e@(Variable var)
-	-- if var equals old, replace variable with new expression
-	| var == old = new
-	-- otherwise, replace nothing
-	| otherwise = e
--- if the expression is a abstraction
-substitute s@(old, new) e@(Abstraction var expr)
-	-- if abstractions has already binded the variable, don't propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Abstraction var $ substitute s expr
--- if the expression is a application
-substitute s@(old, new) e@(Application expr1 expr2) =
-	-- propagate substitutions
-	Application (substitute s expr1) (substitute s expr2)
--- if the expression is a base type such as Int or Bool, do nothing
-substitute s@(old, new) e@(Bool _) = e
-substitute s@(old, new) e@(Int _) = e
--- if the expression is a let binding
-substitute s@(old, new) e@(Let var expr1 expr2)
-	-- if let has already binded the variable, dont propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Let var (substitute s expr1) (substitute s expr2)
--- if the expression is a fixed point, propagate substitutions
-substitute s@(old, new) e@(Fix expr) = Fix $ substitute s expr
--- if the expression is a recursive let binding
-substitute s@(old, new) e@(LetRec var expr1 expr2)
-	-- if let has already binded the variable, dont propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = LetRec var (substitute s expr1) (substitute s expr2)
--- if the expression is a conditional statement
-substitute s@(old, new) e@(If expr1 expr2 expr3) =
-	-- propagate substitutions
-	If (substitute s expr1) (substitute s expr2) (substitute s expr3)
--- if expression is a arithmetic operation or comparison operator,
--- propagate substitutions
-substitute s@(old, new) e@(Addition expr1 expr2) =
-	Addition (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(Subtraction expr1 expr2) =
-	Subtraction (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(Multiplication expr1 expr2) =
-	Multiplication (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(Division expr1 expr2) =
-	Division (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(Equal expr1 expr2) =
-	Equal (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(NotEqual expr1 expr2) =
-	NotEqual (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(LesserThan expr1 expr2) =
-	LesserThan (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(GreaterThan expr1 expr2) =
-	GreaterThan (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(LesserEqualTo expr1 expr2) =
-	LesserEqualTo (substitute s expr1) (substitute s expr2)
-substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
-	GreaterEqualTo (substitute s expr1) (substitute s expr2)
