@@ -2,17 +2,21 @@ module Evaluation (
 	evaluate
 ) where
 
--- Syntax
+-- Syntax & Types
 import Syntax
+import Types
 import Examples
 
 -- evaluate using call-by-name strategy
 evaluate :: Expression -> Expression
+
 -- variables are values
 evaluate e@(Variable _) = e
+
 -- abstractions are values
 evaluate e@(Abstraction _ _) = e
--- if expression is application
+
+-- if expression is an application
 evaluate e@(Application expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
@@ -27,10 +31,26 @@ evaluate e@(Application expr1 expr2)
 		let (Abstraction var expr) = expr1
 		in evaluate $ substitute (var, expr2) expr
 	| otherwise = Error "Application: expression not compatible"
+
+-- if expression is an ascription
+evaluate e@(Ascription expr typ)
+	-- remove ascription
+	| isValue expr = evaluate $ expr
+	| otherwise =
+		let v1 = evaluate expr
+		in evaluate $ Ascription v1 typ
+
+-- if expression is an annotated abstraction
+evaluate e@(Annotation var typ expr) =
+	-- remove type
+	Abstraction var expr
+
 -- booleans are values
 evaluate e@(Bool _) = e
+
 -- integers are values
 evaluate e@(Int _) = e
+
 -- if expression is let binding
 evaluate e@(Let var expr1 expr2)
 	-- reduce expr1
@@ -39,6 +59,7 @@ evaluate e@(Let var expr1 expr2)
 		in evaluate $ Let var v1 expr2
 	-- substitute ocurrences of var in expr2 by expr1
 	| otherwise = evaluate $ substitute (var, expr1) expr2
+
 -- if expression is fixed point
 evaluate e@(Fix expr)
 	-- reduce expr
@@ -50,10 +71,12 @@ evaluate e@(Fix expr)
 		let (Abstraction var expr') = expr
 		in substitute (var, e) expr'
 	| otherwise = Error "Fix: expression not compatible"
+
 -- if expression is a recursive let binding
 evaluate e@(LetRec var expr1 expr2) =
 	-- derive form into a let binding
 	evaluate $ Let var (Fix $ Abstraction var expr1) expr2
+
 -- if expression is a conditional statement
 evaluate e@(If expr1 expr2 expr3)
 	-- reduce expr1
@@ -65,6 +88,7 @@ evaluate e@(If expr1 expr2 expr3)
 	--- if expr1 is False, evaluate expr3
 	| expr1 == Bool False = evaluate expr3
 	| otherwise = Error "If: expression not compatible"
+
 -- if expression is a addition
 evaluate e@(Addition expr1 expr2)
 	-- reduce expr1
@@ -81,6 +105,7 @@ evaluate e@(Addition expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Int (i1 + i2)
+
 -- if expression is a subtraction
 evaluate e@(Subtraction expr1 expr2)
 	-- reduce expr1
@@ -97,6 +122,7 @@ evaluate e@(Subtraction expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Int (i1 - i2)
+
 -- if expression is a multiplication
 evaluate e@(Multiplication expr1 expr2)
 	-- reduce expr1
@@ -113,6 +139,7 @@ evaluate e@(Multiplication expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Int (i1 * i2)
+
 -- if expression is a division
 evaluate e@(Division expr1 expr2)
 	-- reduce expr1
@@ -129,6 +156,7 @@ evaluate e@(Division expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Int $ div i1 i2
+
 -- if expression is a equality check
 evaluate e@(Equal expr1 expr2)
 	-- reduce expr1
@@ -145,6 +173,7 @@ evaluate e@(Equal expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 == i2)
+
 -- if expression is a non equality check
 evaluate e@(NotEqual expr1 expr2)
 	-- reduce expr1
@@ -161,6 +190,7 @@ evaluate e@(NotEqual expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 /= i2)
+
 -- if expression is a lesser than check
 evaluate e@(LesserThan expr1 expr2)
 	-- reduce expr1
@@ -177,6 +207,7 @@ evaluate e@(LesserThan expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 < i2)
+
 -- if expression is a greater than check
 evaluate e@(GreaterThan expr1 expr2)
 	-- reduce expr1
@@ -193,6 +224,7 @@ evaluate e@(GreaterThan expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 > i2)
+
 -- if expression is a lesser than or equal to check
 evaluate e@(LesserEqualTo expr1 expr2)
 	-- reduce expr1
@@ -209,6 +241,7 @@ evaluate e@(LesserEqualTo expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 <= i2)
+
 -- if expression is a greater than or equal to check
 evaluate e@(GreaterEqualTo expr1 expr2)
 	-- reduce expr1

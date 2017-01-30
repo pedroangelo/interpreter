@@ -1,8 +1,16 @@
 module Examples where
 
+-- Syntax & Types
 import Syntax
+import Types
 
 lambda_I = Abstraction "i" $ Variable "i"
+
+lambda_I_ascribed = Abstraction "i" $ Ascription (Variable "i") IntType
+
+lambda_I_annotated = Annotation "i" IntType $ Variable "i"
+
+lambda_I_error = Annotation "i" IntType $ Ascription (Variable "i") BoolType
 
 factorial_func n = Application factorial (Int n)
 factorial = LetRec "fact" (Abstraction "n" $ If (Equal (Variable "n") (Int 0)) (Int 1) (Multiplication (Variable "n") (Application (Variable "fact") (Subtraction (Variable "n") (Int 1))))) (Variable "fact")

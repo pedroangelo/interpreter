@@ -1,10 +1,15 @@
 module Syntax where
 
+-- Types
+import Types
+
 -- Expressions in λ-calculus and extensions
 data Expression
 	= Variable String
 	| Abstraction String Expression
 	| Application Expression Expression
+	| Ascription Expression Type
+	| Annotation String Type Expression
 	| Int Int
 	| Bool Bool
 	| Let String Expression Expression
@@ -26,27 +31,37 @@ data Expression
 
 -- HELPER FUNCTIONS
 
--- check if is a variable
+-- check if it's a variable
 isVariable :: Expression -> Bool
 isVariable (Variable _) = True
 isVariable _ = False
 
--- check if is a abstraction
+-- check if it's an abstraction
 isAbstraction :: Expression -> Bool
 isAbstraction (Abstraction _ _) = True
 isAbstraction _ = False
 
--- check if is a application
+-- check if it's an application
 isApplication :: Expression -> Bool
 isApplication (Application _ _) = True
 isApplication _ = False
+
+-- check if is an ascription
+isAscription :: Expression -> Bool
+isAscription (Ascription _ _) = True
+isAscription _ = False
+
+-- check if is an annotated abstraction
+isAnnotation :: Expression -> Bool
+isAnnotation (Annotation _ _ _) = True
+isAnnotation _ = False
 
 -- check if is a boolean
 isBool :: Expression -> Bool
 isBool (Bool _) = True
 isBool _ = False
 
--- check if is a integer
+-- check if is an integer
 isInt :: Expression -> Bool
 isInt (Int _) = True
 isInt _ = False
@@ -71,7 +86,7 @@ isIf :: Expression -> Bool
 isIf (If _ _ _) = True
 isIf _ = False
 
--- check if is a addition
+-- check if is an addition
 isAddition :: Expression -> Bool
 isAddition (Addition _ _) = True
 isAddition _ = False
@@ -91,7 +106,7 @@ isDivision :: Expression -> Bool
 isDivision (Division _ _) = True
 isDivision _ = False
 
--- check if is a equality check
+-- check if is an equality check
 isEqual :: Expression -> Bool
 isEqual (Equal _ _) = True
 isEqual _ = False
@@ -121,7 +136,7 @@ isGreaterEqualTo :: Expression -> Bool
 isGreaterEqualTo (GreaterEqualTo _ _) = True
 isGreaterEqualTo _ = False
 
--- check if is a error
+-- check if is an error
 isError :: Expression -> Bool
 isError (Error _) = True
 isError _ = False
@@ -139,44 +154,65 @@ type ExpressionSubstitution = (String, Expression)
 
 -- Substitute expressions according to substitution
 substitute :: ExpressionSubstitution -> Expression -> Expression
+
 -- if the expression is a variable
 substitute s@(old, new) e@(Variable var)
 	-- if var equals old, replace variable with new expression
 	| var == old = new
 	-- otherwise, replace nothing
 	| otherwise = e
--- if the expression is a abstraction
+
+-- if the expression is an abstraction
 substitute s@(old, new) e@(Abstraction var expr)
-	-- if abstractions has already binded the variable, don't propagate substitutions
+	-- if some abstraction has already binded the variable, don't propagate substitutions
 	| var == old = e
 	-- otherwise, propagate substitutions
 	| otherwise = Abstraction var $ substitute s expr
--- if the expression is a application
+
+-- if the expression is an application
 substitute s@(old, new) e@(Application expr1 expr2) =
 	-- propagate substitutions
 	Application (substitute s expr1) (substitute s expr2)
+
+-- if the expression is an ascription
+substitute s@(old, new) e@(Ascription expr typ) =
+	-- propagate substitutions
+	Ascription (substitute s expr) typ
+
+-- if the expression is an annotated Abstraction
+substitute s@(old, new) e@(Annotation var typ expr)
+	-- if some abstraction has already binded the variable, don't propagate substitutions
+	| var == old = e
+	-- otherwise, propagate substitutions
+	| otherwise = Annotation var typ $ substitute s expr
+
 -- if the expression is a base type such as Int or Bool, do nothing
 substitute s@(old, new) e@(Bool _) = e
 substitute s@(old, new) e@(Int _) = e
+
 -- if the expression is a let binding
 substitute s@(old, new) e@(Let var expr1 expr2)
 	-- if let has already binded the variable, dont propagate substitutions
 	| var == old = e
 	-- otherwise, propagate substitutions
 	| otherwise = Let var (substitute s expr1) (substitute s expr2)
+
 -- if the expression is a fixed point, propagate substitutions
 substitute s@(old, new) e@(Fix expr) = Fix $ substitute s expr
+
 -- if the expression is a recursive let binding
 substitute s@(old, new) e@(LetRec var expr1 expr2)
 	-- if let has already binded the variable, dont propagate substitutions
 	| var == old = e
 	-- otherwise, propagate substitutions
 	| otherwise = LetRec var (substitute s expr1) (substitute s expr2)
+
 -- if the expression is a conditional statement
 substitute s@(old, new) e@(If expr1 expr2 expr3) =
 	-- propagate substitutions
 	If (substitute s expr1) (substitute s expr2) (substitute s expr3)
--- if expression is a arithmetic operation or comparison operator,
+
+-- if expression is an arithmetic operation or comparison operator,
 -- propagate substitutions
 substitute s@(old, new) e@(Addition expr1 expr2) =
 	Addition (substitute s expr1) (substitute s expr2)

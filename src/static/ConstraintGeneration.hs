@@ -12,6 +12,7 @@ import Data.Maybe
 
 -- generate constraint set and type given a context and expression
 generateConstraints :: (Context, Expression) -> State Int (Type, Constraints)
+
 -- (Cx) if expression is a variable
 generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
@@ -51,6 +52,26 @@ generateConstraints (ctx, Application expr1 expr2) = do
 	(t2, constraints2) <- generateConstraints typeAssignment2
 	-- return type along with all the constraints
 	return (newVar, constraints1 ++ constraints2 ++ [Equality t1 (ArrowType t2 newVar)])
+
+-- (C::) if expression is an ascription
+generateConstraints (ctx, Ascription expr typ) = do
+	-- build type assignment for expression
+	let typeAssignment = (ctx, expr)
+	-- obtain type and generate constraints for type assignment
+	(exprType, constraints) <- generateConstraints typeAssignment
+	-- return type along with all the constraints
+	return (typ, constraints ++ [Equality exprType typ])
+
+-- (Cλ:) if expression is a annotated abstraction
+generateConstraints (ctx, Annotation var typ expr) = do
+	-- create a binding between the abstraction variable and the annotated type
+	let binding = (var, typ)
+	-- build type assignment with new binding
+	let typeAssignment = (binding : ctx, expr)
+	-- obtain type and generate constraints for new type assignment
+	(exprType, constraints) <- generateConstraints typeAssignment
+	-- return arrow type and constraints
+	return (ArrowType typ exprType, constraints)
 
 -- (Cn) if expression is a integer
 generateConstraints (ctx, Int int) = do
