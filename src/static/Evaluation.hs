@@ -7,7 +7,7 @@ import Syntax
 import Types
 import Examples
 
--- evaluate using call-by-name strategy
+-- evaluate using call-by-value strategy
 evaluate :: Expression -> Expression
 
 -- variables are values

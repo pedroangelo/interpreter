@@ -16,9 +16,9 @@ generateConstraints :: (Context, Expression) -> State Int (Type, Constraints)
 -- (Cx) if expression is a variable
 generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
-	let result = lookup var ctx
+	let finalType = fromJust $ lookup var ctx
 	-- return type
-	return (fromJust result, [])
+	return (finalType, [])
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do
