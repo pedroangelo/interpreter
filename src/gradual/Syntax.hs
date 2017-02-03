@@ -146,7 +146,7 @@ isValue :: Expression -> Bool
 isValue e =
 	isVariable e ||
 	isAbstraction e ||
-	isAnnotation e || 
+	isAnnotation e ||
 	isBool e ||
 	isInt e
 
