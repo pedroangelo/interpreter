@@ -1,6 +1,6 @@
 module TypeInference (
 	inferType,
-	typeExpression
+	insertTypeInformation
 ) where
 
 -- Syntax & Types
@@ -20,8 +20,8 @@ inferType :: Expression -> Type
 inferType = fst . typeInference
 
 -- insert type information to each term in the expression
-typeExpression :: Expression -> Expression
-typeExpression = snd . typeInference
+insertTypeInformation :: Expression -> Expression
+insertTypeInformation = snd . typeInference
 
 -- type inference procedure
 typeInference :: Expression -> (Type, Expression)
