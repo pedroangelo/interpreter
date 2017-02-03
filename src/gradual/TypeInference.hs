@@ -15,7 +15,15 @@ import ConstraintUnification
 -- Imports
 import Control.Monad.State
 
+-- infer the type of the expression
+inferType :: Expression -> Type
+inferType = fst . typeInference
 
+-- insert type information to each term in the expression
+typeExpression :: Expression -> Expression
+typeExpression = snd . typeInference
+
+-- type inference procedure
 typeInference :: Expression -> (Type, Expression)
 typeInference expr =
 	let
@@ -32,10 +40,3 @@ typeInference expr =
 		-- discover final types by applying all substitutions to each type ascription and type information in the expression
 		typedExpr = substituteTypedExpression substitutions expr_typed
 	in (finalType, typedExpr)
-
--- infer the type of the expression
-inferType :: Expression -> Type
-inferType = fst . typeInference
-
-typeExpression :: Expression -> Expression
-typeExpression = snd . typeInference
