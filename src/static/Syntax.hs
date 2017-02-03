@@ -26,7 +26,6 @@ data Expression
 	| GreaterThan Expression Expression
 	| LesserEqualTo Expression Expression
 	| GreaterEqualTo Expression Expression
-	| Error String
 	deriving (Show, Eq)
 
 -- HELPER FUNCTIONS
@@ -135,11 +134,6 @@ isLessEqualTo _ = False
 isGreaterEqualTo :: Expression -> Bool
 isGreaterEqualTo (GreaterEqualTo _ _) = True
 isGreaterEqualTo _ = False
-
--- check if is an error
-isError :: Expression -> Bool
-isError (Error _) = True
-isError _ = False
 
 -- check if is a value
 isValue :: Expression -> Bool

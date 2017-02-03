@@ -30,7 +30,6 @@ evaluate e@(Application expr1 expr2)
 	| isAbstraction expr1 && isValue expr2 =
 		let (Abstraction var expr) = expr1
 		in evaluate $ substitute (var, expr2) expr
-	| otherwise = Error "Application: expression not compatible"
 
 -- if expression is an ascription
 evaluate e@(Ascription expr typ)
@@ -70,7 +69,6 @@ evaluate e@(Fix expr)
 	| isAbstraction expr =
 		let (Abstraction var expr') = expr
 		in substitute (var, e) expr'
-	| otherwise = Error "Fix: expression not compatible"
 
 -- if expression is a recursive let binding
 evaluate e@(LetRec var expr1 expr2) =
@@ -87,7 +85,6 @@ evaluate e@(If expr1 expr2 expr3)
 	| expr1 == Bool True = evaluate expr2
 	--- if expr1 is False, evaluate expr3
 	| expr1 == Bool False = evaluate expr3
-	| otherwise = Error "If: expression not compatible"
 
 -- if expression is a addition
 evaluate e@(Addition expr1 expr2)
