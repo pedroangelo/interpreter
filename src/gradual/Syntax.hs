@@ -26,7 +26,7 @@ data Expression
 	| GreaterThan Expression Expression
 	| LesserEqualTo Expression Expression
 	| GreaterEqualTo Expression Expression
-	| Error String
+	| TypeInformation Type Expression
 	deriving (Show, Eq)
 
 -- HELPER FUNCTIONS
@@ -136,17 +136,17 @@ isGreaterEqualTo :: Expression -> Bool
 isGreaterEqualTo (GreaterEqualTo _ _) = True
 isGreaterEqualTo _ = False
 
--- check if is an error
-isError :: Expression -> Bool
-isError (Error _) = True
-isError _ = False
+-- check if is a type information
+isTypeInformation :: Expression -> Bool
+isTypeInformation (TypeInformation _ _) = True
+isTypeInformation _ = False
 
 -- check if is a value
 isValue :: Expression -> Bool
 isValue e =
 	isVariable e ||
 	isAbstraction e ||
-	isAnnotation e || 
+	isAnnotation e ||
 	isBool e ||
 	isInt e
 
@@ -235,3 +235,52 @@ substitute s@(old, new) e@(LesserEqualTo expr1 expr2) =
 	LesserEqualTo (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
 	GreaterEqualTo (substitute s expr1) (substitute s expr2)
+
+-- if expression is a type information, propagate substitutions
+substitute s@(old, new) e@(TypeInformation typ expr) =
+	TypeInformation typ $ substitute s expr
+
+-- substitute types in annotations and type information
+-- using the substitutions generated during constraint unification
+substituteTypedExpression :: TypeSubstitutions -> Expression -> Expression
+substituteTypedExpression s (Variable var) = Variable var
+substituteTypedExpression s (Abstraction var expr) =
+	Abstraction var $ substituteTypedExpression s expr
+substituteTypedExpression s (Application expr1 expr2) =
+	Application (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (Ascription expr typ) =
+	Ascription (substituteTypedExpression s expr) (insertTypeParameters $ foldr instantiateTypeVariable typ s)
+substituteTypedExpression s (Annotation var typ expr) =
+	Annotation var typ (substituteTypedExpression s expr)
+substituteTypedExpression s (Int int) =	Int int
+substituteTypedExpression s (Bool bool) = Bool bool
+substituteTypedExpression s (Let var expr1 expr2) =
+	Let var (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (Fix expr) =
+	Fix (substituteTypedExpression s expr)
+substituteTypedExpression s (LetRec var expr1 expr2) =
+	LetRec var (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (If expr1 expr2 expr3) =
+	If (substituteTypedExpression s expr1) (substituteTypedExpression s expr2) (substituteTypedExpression s expr3)
+substituteTypedExpression s (Addition expr1 expr2) =
+	Addition (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (Subtraction expr1 expr2) =
+	Subtraction (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (Multiplication expr1 expr2) =
+	Multiplication (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (Division expr1 expr2) =
+	Division (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (Equal expr1 expr2) =
+	Equal (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (NotEqual expr1 expr2) =
+	NotEqual (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (LesserThan expr1 expr2) =
+	LesserThan (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (GreaterThan expr1 expr2) =
+	GreaterThan (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (LesserEqualTo expr1 expr2) =
+	LesserEqualTo (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (GreaterEqualTo expr1 expr2) =
+	GreaterEqualTo (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
+substituteTypedExpression s (TypeInformation typ expr) =
+	TypeInformation (insertTypeParameters $ foldr instantiateTypeVariable typ s) (substituteTypedExpression s expr)

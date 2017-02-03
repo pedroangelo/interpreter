@@ -11,14 +11,16 @@ import Control.Monad.State
 import Data.Maybe
 
 -- generate constraint set and type given a context and expression
-generateConstraints :: (Context, Expression) -> State Int (Type, Constraints)
+generateConstraints :: (Context, Expression) -> State Int (Type, Constraints, Expression)
 
 -- (Cx) if expression is a variable
 generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
 	let finalType = fromJust $ lookup var ctx
+	-- build typed expression
+	let typedExpr = TypeInformation finalType (Variable var)
 	-- return type
-	return (finalType, [])
+	return (finalType, [], typedExpr)
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do
@@ -32,9 +34,11 @@ generateConstraints (ctx, Abstraction var expr) = do
 	-- build type assignment with new binding
 	let typeAssignment = (binding : ctx, expr)
 	-- obtain type and generate constraints for new type assignment
-	(exprType, constraints) <- generateConstraints typeAssignment
+	(exprType, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- build typed expression
+	let typedExpr = TypeInformation (ArrowType newVar1 exprType) (Abstraction var expr_typed)
 	-- return arrow type and constraints
-	return (ArrowType newVar1 exprType, constraints)
+	return (ArrowType newVar1 exprType, constraints, typedExpr)
 
 -- (Capp) if expression is a application
 generateConstraints (ctx, Application expr1 expr2) = do
@@ -43,22 +47,26 @@ generateConstraints (ctx, Application expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
 	-- get constraints for codomain and domain relation
 	(t3, constraints3) <- codomain t1
 	constraints4 <- domain t1 t2
+	-- build typed expression
+	let typedExpr = TypeInformation t3 (Application expr1_typed expr2_typed)
 	-- return type along with all the constraints
-	return (t3, constraints1 ++ constraints2 ++ constraints3 ++ constraints4)
+	return (t3, constraints1 ++ constraints2 ++ constraints3 ++ constraints4, typedExpr)
 
 -- (C::) if expression is an ascription
 generateConstraints (ctx, Ascription expr typ) = do
 	-- build type assignment for expression
 	let typeAssignment = (ctx, expr)
 	-- obtain type and generate constraints for type assignment
-	(exprType, constraints) <- generateConstraints typeAssignment
+	(exprType, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- build typed expression
+	let typedExpr = TypeInformation typ (Ascription expr_typed typ)
 	-- return type along with all the constraints
-	return (typ, constraints ++ [Consistency exprType typ])
+	return (typ, constraints ++ [Consistency exprType typ], typedExpr)
 
 -- (Cλ:) if expression is a annotated abstraction
 generateConstraints (ctx, Annotation var typ expr) = do
@@ -67,44 +75,59 @@ generateConstraints (ctx, Annotation var typ expr) = do
 	-- build type assignment with new binding
 	let typeAssignment = (binding : ctx, expr)
 	-- obtain type and generate constraints for new type assignment
-	(exprType, constraints) <- generateConstraints typeAssignment
+	(exprType, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- build typed expression
+	let typedExpr = TypeInformation (ArrowType typ exprType) (Annotation var typ expr_typed)
 	-- return arrow type and constraints
-	return (ArrowType typ exprType, constraints)
+	return (ArrowType typ exprType, constraints, typedExpr)
 
 -- (Cn) if expression is a integer
 generateConstraints (ctx, Int int) = do
+	-- build typed expression
+	let typedExpr = TypeInformation IntType (Int int)
 	-- return Int type
-	return (IntType, [])
+	return (IntType, [], typedExpr)
 
 -- (Cb) if expression is a boolean
 generateConstraints (ctx, Bool bool) = do
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (Bool bool)
 	-- return Bool type
-	return (BoolType, [])
+	return (BoolType, [], typedExpr)
 
--- if expression is a let binding
-generateConstraints (ctx, Let var expr1 expr2)
+-- (Clet) if expression is a let binding
+generateConstraints (ctx, Let var expr1 expr2) = do
 	-- (Cletp) if expression is a let binding a value to a variable
-	| isValue expr1 = do
+	-- | isValue expr1 = do
 		-- build type assignment for value
 		let typeAssignment1 = (ctx, expr1)
 		-- obtain type and generate constraints for type assignment
-		(t1, constraints1) <- generateConstraints typeAssignment1
+		(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
 		-- build type assignment for value
-		let typeAssignment2 = (ctx, substitute (var, expr1) expr2)
+		let typeAssignment2 = ((var, t1) : ctx, expr2)
 		-- obtain type and generate constraints for type assignment
-		(t2, constraints2) <- generateConstraints typeAssignment2
+		(_, _, expr2_typed) <- generateConstraints typeAssignment2
+		-- build type assignment for value
+		let typeAssignment = (ctx, substitute (var, expr1) expr2)
+		-- obtain type and generate constraints for type assignment
+		(t2, constraints2, _) <- generateConstraints typeAssignment
+		-- build typed expression
+		let typedExpr = TypeInformation t2 (Let var expr1_typed expr2_typed)
 		-- return type along with all the constraints
-		return (t2, constraints1 ++ constraints2)
+		return (t2, constraints1 ++ constraints2, typedExpr)
 	-- (Clet) if expression is a let binding a expression to a variable
-	| otherwise = do
+{-	| otherwise = do
 		-- build type assignment for expression
 		let typeAssignment = (ctx, Application (Abstraction var expr2) (expr1))
 		-- obtain type and generate constraints for type assignment
-		(exprType, constraints) <- generateConstraints typeAssignment
+		(exprType, constraints, expr_typed) <- generateConstraints typeAssignment
+		-- build typed expression
+		let typedExpr = Ascription (Int int) IntType
 		-- return type along with all the constraints
 		return (exprType, constraints)
+-}
 
--- if expression is a fixed point
+-- (Cfix) if expression is a fixed point
 generateConstraints (ctx, Fix expr) = do
 	-- counter for variable creation
 	i <- get
@@ -115,16 +138,26 @@ generateConstraints (ctx, Fix expr) = do
 	-- build type assignment
 	let typeAssignment1 = (ctx, expr)
 	-- obtain type and generate constraints for type assignment
-	(t1, constraints) <- generateConstraints typeAssignment1
-	return (newVar1, constraints ++ [Consistency t1 (ArrowType newVar1 newVar2)])
+	(t1, constraints, expr_typed) <- generateConstraints typeAssignment1
+	-- build typed expression
+	let typedExpr = TypeInformation newVar1 (Fix expr_typed)
+	return (newVar1, constraints ++ [Consistency t1 (ArrowType newVar1 newVar2)], typedExpr)
 
--- if expression is a recursive let binding
+-- (Cletrec) if expression is a recursive let binding
 generateConstraints (ctx, LetRec var expr1 expr2) = do
 	-- build type assignment
 	let typeAssignment = (ctx, Let var (Fix $ Abstraction var expr1) expr2)
 	-- obtain type and generate constraints for type assignment
-	(t, constraints) <- generateConstraints typeAssignment
-	return (t, constraints)
+	(t, constraints, _) <- generateConstraints typeAssignment
+	-- build type assignment
+	let typeAssignment1 = (ctx, expr1)
+	let typeAssignment2 = (ctx, expr2)
+	-- obtain type and generate constraints for type assignment
+	(_, _, expr1_typed) <- generateConstraints typeAssignment
+	(_, _, expr2_typed) <- generateConstraints typeAssignment
+	-- build typed expression
+	let typedExpr = TypeInformation t (LetRec var expr1_typed expr2_typed)
+	return (t, constraints, typedExpr)
 
 -- (Cif) if expression if a conditional statement
 generateConstraints (ctx, If expr1 expr2 expr3) = do
@@ -134,12 +167,15 @@ generateConstraints (ctx, If expr1 expr2 expr3) = do
 	let typeAssignment2 = (ctx, expr2)
 	let typeAssignment3 = (ctx, expr3)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
-	(t3, constraints3) <- generateConstraints typeAssignment3
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	(t3, constraints3, expr3_typed) <- generateConstraints typeAssignment3
 	let (t4, constraints4) = meet t2 t3
+	-- build typed expression
+	let typedExpr = TypeInformation t4 (If expr1_typed expr2_typed expr3_typed)
 	-- return type along with all the constraints
-	return (t4, constraints1 ++ constraints2 ++ constraints3 ++ constraints4 ++ [Consistency t1 BoolType])
+	return (t4, constraints1 ++ constraints2
+		++ constraints3 ++ constraints4 ++ [Consistency t1 BoolType], typedExpr)
 
 -- (C+) if expression if an addition
 generateConstraints (ctx, Addition expr1 expr2) = do
@@ -148,11 +184,13 @@ generateConstraints (ctx, Addition expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation IntType (Addition expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C-) if expression if a subtraction
 generateConstraints (ctx, Subtraction expr1 expr2) = do
@@ -161,11 +199,13 @@ generateConstraints (ctx, Subtraction expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation IntType (Subtraction expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C*) if expression if a multiplication
 generateConstraints (ctx, Multiplication expr1 expr2) = do
@@ -174,11 +214,13 @@ generateConstraints (ctx, Multiplication expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation IntType (Multiplication expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C/) if expression if a division
 generateConstraints (ctx, Division expr1 expr2) = do
@@ -187,11 +229,13 @@ generateConstraints (ctx, Division expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation IntType (Division expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C==) if expression if a equality check
 generateConstraints (ctx, Equal expr1 expr2) = do
@@ -200,11 +244,13 @@ generateConstraints (ctx, Equal expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (Equal expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C/=) if expression if a not equality check
 generateConstraints (ctx, NotEqual expr1 expr2) = do
@@ -213,11 +259,13 @@ generateConstraints (ctx, NotEqual expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (NotEqual expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C<) if expression if a lesser than check
 generateConstraints (ctx, LesserThan expr1 expr2) = do
@@ -226,11 +274,13 @@ generateConstraints (ctx, LesserThan expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (LesserThan expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C>) if expression if a greater than check
 generateConstraints (ctx, GreaterThan expr1 expr2) = do
@@ -239,11 +289,13 @@ generateConstraints (ctx, GreaterThan expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (GreaterThan expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C<=) if expression if a lesser than or equal to check
 generateConstraints (ctx, LesserEqualTo expr1 expr2) = do
@@ -252,11 +304,13 @@ generateConstraints (ctx, LesserEqualTo expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (LesserEqualTo expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
 
 -- (C>=) if expression if a greater than or equal to
 generateConstraints (ctx, GreaterEqualTo expr1 expr2) = do
@@ -265,11 +319,22 @@ generateConstraints (ctx, GreaterEqualTo expr1 expr2) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
-	(t1, constraints1) <- generateConstraints typeAssignment1
-	(t2, constraints2) <- generateConstraints typeAssignment2
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (GreaterEqualTo expr1_typed expr2_typed)
 	-- return type along with all the constraints
 	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType])
+		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
+
+-- (C:) if expression if a type information
+generateConstraints (ctx, e@(TypeInformation typ expr)) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and generate constraints for type assignment
+	(t, constraints, _) <- generateConstraints typeAssignment
+	-- return type along with all the constraints
+	return (t, constraints, e)
 
 -- generate constraints and type for codomain relation
 codomain :: Type -> State Int (Type, Constraints)
