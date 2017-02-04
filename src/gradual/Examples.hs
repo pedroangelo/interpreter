@@ -95,3 +95,5 @@ example6 = Let "incr" (Annotation "x" DynType (Addition (Int 1) (Variable "x")))
 
 -- (\x : ? . 1 + x) True : Int
 example6_1 = Application (Annotation "x" DynType (Addition (Int 1) (Variable "x"))) (Bool True)
+
+example6_2 = Application (Ascription (Abstraction "x" (Addition (Int 1) (Variable "x"))) (ArrowType DynType IntType)) (Bool True)

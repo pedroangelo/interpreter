@@ -38,5 +38,5 @@ typeInference expr =
 		finalType = insertTypeParameters $ foldr instantiateTypeVariable typ substitutions
 		-- replace unconstrained type variables by type parameters
 		-- discover final types by applying all substitutions to each type ascription and type information in the expression
-		typedExpr = substituteTypedExpression substitutions expr_typed
+		typedExpr = mapExpression (substituteTypedExpression substitutions) expr_typed
 	in (finalType, typedExpr)

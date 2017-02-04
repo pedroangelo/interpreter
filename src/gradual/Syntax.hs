@@ -27,7 +27,34 @@ data Expression
 	| LesserEqualTo Expression Expression
 	| GreaterEqualTo Expression Expression
 	| TypeInformation Type Expression
+	| Cast Type Type Expression
 	deriving (Show, Eq)
+
+-- Expression Mapping
+mapExpression :: (Expression -> Expression) -> Expression -> Expression
+mapExpression f e@(Variable var) = f e
+mapExpression f e@(Abstraction var expr) = f (Abstraction var $ mapExpression f expr)
+mapExpression f e@(Application expr1 expr2) = f (Application (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Ascription expr typ) = f (Ascription (mapExpression f expr) typ)
+mapExpression f e@(Annotation var typ expr) = f (Annotation var typ (mapExpression f expr))
+mapExpression f e@(Int int) = f e
+mapExpression f e@(Bool bool) = f e
+mapExpression f e@(Let var expr1 expr2) = f (Let var (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Fix expr) = f (Fix (mapExpression f expr))
+mapExpression f e@(LetRec var expr1 expr2) = f (LetRec var (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(If expr1 expr2 expr3) = f (If (mapExpression f expr1) (mapExpression f expr2) (mapExpression f expr3))
+mapExpression f e@(Addition expr1 expr2) = f (Addition (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Subtraction expr1 expr2) = f (Subtraction (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Multiplication expr1 expr2) = f (Multiplication (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Division expr1 expr2) = f (Division (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Equal expr1 expr2) = f (Equal (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(NotEqual expr1 expr2) = f (NotEqual (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(LesserThan expr1 expr2) = f (LesserThan (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(GreaterThan expr1 expr2) = f (GreaterThan (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(LesserEqualTo expr1 expr2) = f (LesserEqualTo (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(GreaterEqualTo expr1 expr2) = f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
+mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
 
 -- HELPER FUNCTIONS
 
@@ -150,6 +177,20 @@ isValue e =
 	isBool e ||
 	isInt e
 
+-- substitute types in annotations and type information
+-- using the substitutions generated during constraint unification
+substituteTypedExpression :: TypeSubstitutions -> Expression -> Expression
+substituteTypedExpression s (Ascription expr typ) =
+	Ascription expr (insertTypeParameters $ foldr instantiateTypeVariable typ s)
+substituteTypedExpression s (TypeInformation typ expr) =
+	TypeInformation (insertTypeParameters $ foldr instantiateTypeVariable typ s) expr
+substituteTypedExpression s e = e
+
+-- remove type information from expression
+removeTypeInformation :: Expression -> Expression
+removeTypeInformation (TypeInformation _ expr) = expr
+removeTypeInformation e = e
+
 -- SUBSTITUTIONS
 type ExpressionSubstitution = (String, Expression)
 
@@ -239,48 +280,3 @@ substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
 -- if expression is a type information, propagate substitutions
 substitute s@(old, new) e@(TypeInformation typ expr) =
 	TypeInformation typ $ substitute s expr
-
--- substitute types in annotations and type information
--- using the substitutions generated during constraint unification
-substituteTypedExpression :: TypeSubstitutions -> Expression -> Expression
-substituteTypedExpression s (Variable var) = Variable var
-substituteTypedExpression s (Abstraction var expr) =
-	Abstraction var $ substituteTypedExpression s expr
-substituteTypedExpression s (Application expr1 expr2) =
-	Application (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (Ascription expr typ) =
-	Ascription (substituteTypedExpression s expr) (insertTypeParameters $ foldr instantiateTypeVariable typ s)
-substituteTypedExpression s (Annotation var typ expr) =
-	Annotation var typ (substituteTypedExpression s expr)
-substituteTypedExpression s (Int int) =	Int int
-substituteTypedExpression s (Bool bool) = Bool bool
-substituteTypedExpression s (Let var expr1 expr2) =
-	Let var (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (Fix expr) =
-	Fix (substituteTypedExpression s expr)
-substituteTypedExpression s (LetRec var expr1 expr2) =
-	LetRec var (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (If expr1 expr2 expr3) =
-	If (substituteTypedExpression s expr1) (substituteTypedExpression s expr2) (substituteTypedExpression s expr3)
-substituteTypedExpression s (Addition expr1 expr2) =
-	Addition (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (Subtraction expr1 expr2) =
-	Subtraction (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (Multiplication expr1 expr2) =
-	Multiplication (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (Division expr1 expr2) =
-	Division (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (Equal expr1 expr2) =
-	Equal (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (NotEqual expr1 expr2) =
-	NotEqual (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (LesserThan expr1 expr2) =
-	LesserThan (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (GreaterThan expr1 expr2) =
-	GreaterThan (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (LesserEqualTo expr1 expr2) =
-	LesserEqualTo (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (GreaterEqualTo expr1 expr2) =
-	GreaterEqualTo (substituteTypedExpression s expr1) (substituteTypedExpression s expr2)
-substituteTypedExpression s (TypeInformation typ expr) =
-	TypeInformation (insertTypeParameters $ foldr instantiateTypeVariable typ s) (substituteTypedExpression s expr)
