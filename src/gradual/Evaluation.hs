@@ -313,10 +313,10 @@ evaluate e@(TypeInformation typ expr) = expr
 
 -- if expression is a cast
 evaluate e@(Cast t1 t2 expr)
-	-- values don't reduce
-	| isValue e = e
 	-- push blame to top level
 	| isBlame expr = expr
+	-- values don't reduce
+	| isValue e = e
 	-- evaluate inside a cast
 	| (not $ isValue expr) =
 		let expr' = evaluate expr

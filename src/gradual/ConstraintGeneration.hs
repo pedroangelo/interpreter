@@ -358,6 +358,7 @@ codomain t
 	| isDynType t = do
 		-- return dynamic typ
 		return (DynType, [])
+
 -- generate constraints for domain relation
 domain :: Type -> Type -> State Int Constraints
 domain t1 t2
