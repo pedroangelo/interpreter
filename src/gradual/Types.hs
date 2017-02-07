@@ -65,14 +65,33 @@ isDynType :: Type -> Bool
 isDynType (DynType) = True
 isDynType _ = False
 
+-- check if is ground type
+isGroundType :: Type -> Bool
+isGroundType (ParType t1) = True
+isGroundType (ArrowType DynType DynType) = True
+isGroundType IntType = True
+isGroundType BoolType = True
+isGroundType _ = False
+
+getGroundType :: Type -> Type
+getGroundType e@(ParType _) = e
+getGroundType (ArrowType _ _) = ArrowType DynType DynType
+getGroundType IntType = IntType
+getGroundType BoolType = BoolType
+
+sameGround :: Type -> Type -> Bool
+sameGround t1 t2 = getGroundType t1 == getGroundType t2
+
 -- SUBSTITUTIONS
 type TypeSubstitutions = [TypeSubstitution]
 type TypeSubstitution = (Type, Type)
 
 -- apply substitution to constraints
 substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
-substituteConstraint s (Equality t1 t2) = Equality (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
-substituteConstraint s (Consistency t1 t2) = Consistency (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
+substituteConstraint s (Equality t1 t2) =
+	Equality (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
+substituteConstraint s (Consistency t1 t2) =
+	Consistency (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
 
 -- instantiate a type variable with a type
 instantiateTypeVariable :: TypeSubstitution -> Type -> Type

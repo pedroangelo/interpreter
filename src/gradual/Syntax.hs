@@ -28,6 +28,7 @@ data Expression
 	| GreaterEqualTo Expression Expression
 	| TypeInformation Type Expression
 	| Cast Type Type Expression
+	| Blame Type String
 	deriving (Show, Eq)
 
 -- Expression Mapping
@@ -55,6 +56,7 @@ mapExpression f e@(LesserEqualTo expr1 expr2) = f (LesserEqualTo (mapExpression 
 mapExpression f e@(GreaterEqualTo expr1 expr2) = f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
 mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
+mapExpression f e@(Blame typ label) = f e
 
 -- HELPER FUNCTIONS
 
@@ -168,14 +170,31 @@ isTypeInformation :: Expression -> Bool
 isTypeInformation (TypeInformation _ _) = True
 isTypeInformation _ = False
 
+-- check if it a cast
+isCast :: Expression -> Bool
+isCast (Cast _ _ _) = True
+isCast _ = False
+
+-- check if it blame
+isBlame :: Expression -> Bool
+isBlame (Blame _ _) = True
+isBlame _ = False
+
 -- check if is a value
 isValue :: Expression -> Bool
 isValue e =
 	isVariable e ||
 	isAbstraction e ||
-	isAnnotation e ||
 	isBool e ||
-	isInt e
+	isInt e ||
+	isValueCast e ||
+	isBlame e
+
+isValueCast :: Expression -> Bool
+isValueCast (Cast t1 t2 e) =
+	(isGroundType t1 && isDynType t2 && isValue e) ||
+	(isArrowType t1 && isArrowType t2 && isValue e)
+isValueCast _ = False
 
 -- substitute types in annotations and type information
 -- using the substitutions generated during constraint unification
@@ -189,6 +208,7 @@ substituteTypedExpression s e = e
 -- remove type information from expression
 removeTypeInformation :: Expression -> Expression
 removeTypeInformation (TypeInformation _ expr) = expr
+removeTypeInformation (Ascription expr _) = expr
 removeTypeInformation e = e
 
 -- SUBSTITUTIONS
@@ -280,3 +300,10 @@ substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
 -- if expression is a type information, propagate substitutions
 substitute s@(old, new) e@(TypeInformation typ expr) =
 	TypeInformation typ $ substitute s expr
+
+-- if expression is a cast, propagate substitutions
+substitute s@(old, new) e@(Cast t1 t2 expr) =
+	Cast t1 t2 $ substitute s expr
+
+-- if expression is a blame, don't propagate substitutions
+substitute s@(old, new) e@(Blame t1 label) = e
