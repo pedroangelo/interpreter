@@ -8,19 +8,27 @@ import Types
 
 -- Imports
 import Control.Monad.State
+import Control.Monad.Except
 import Data.Maybe
 
 -- generate constraint set and type given a context and expression
-generateConstraints :: (Context, Expression) -> State Int (Type, Constraints, Expression)
+generateConstraints :: (Context, Expression) -> StateT Int (Except String) (Type, Constraints, Expression)
 
 -- (Cx) if expression is a variable
 generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
-	let finalType = fromJust $ lookup var ctx
-	-- build typed expression
-	let typedExpr = TypeInformation finalType (Variable var)
-	-- return type
-	return (finalType, [], typedExpr)
+	let varType = lookup var ctx
+	-- check if variable exists in context
+	if isNothing varType
+		-- if not, throw error
+		then throwError $ "Variable " ++ var ++ " does not exist"
+		else do
+			-- retrieve type
+			let finalType = fromJust $ varType
+			-- build typed expression
+			let typedExpr = TypeInformation finalType (Variable var)
+			-- return type
+			return (finalType, [], typedExpr)
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do
@@ -337,7 +345,7 @@ generateConstraints (ctx, e@(TypeInformation typ expr)) = do
 	return (t, constraints, e)
 
 -- generate constraints and type for codomain relation
-codomain :: Type -> State Int (Type, Constraints)
+codomain :: Type -> StateT Int (Except String) (Type, Constraints)
 codomain t
 	-- if t is type variable
 	| isVarType t = do
@@ -358,9 +366,11 @@ codomain t
 	| isDynType t = do
 		-- return dynamic typ
 		return (DynType, [])
+	-- throw error
+	| otherwise = throwError "codomain"
 
 -- generate constraints for domain relation
-domain :: Type -> Type -> State Int Constraints
+domain :: Type -> Type -> StateT Int (Except String) Constraints
 domain t1 t2
 	-- if t1 is type variable
 	| isVarType t1 = do
@@ -381,6 +391,8 @@ domain t1 t2
 	| isDynType t1 = do
 		-- return constraints ? ~C t2
 		return [Consistency DynType t2]
+	-- throw error
+	| otherwise = throwError "domain"
 
 -- generate constraints and type for meet relation
 meet :: Type -> Type -> (Type, Constraints)

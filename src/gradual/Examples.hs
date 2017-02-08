@@ -99,3 +99,5 @@ example6_1 = Application (Annotation "x" DynType (Addition (Int 1) (Variable "x"
 example6_2 = Application (Ascription (Abstraction "x" (Addition (Int 1) (Variable "x"))) (ArrowType DynType IntType)) (Bool True)
 
 example6_3 = Application (Abstraction "x" (Addition (Int 1) (Variable "x"))) (Int 1)
+
+example7 = Let "id" (Abstraction "x" $ Variable "x") (Application (Int 1) (Variable "id"))
