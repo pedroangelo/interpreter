@@ -205,11 +205,15 @@ substituteTypedExpression s (TypeInformation typ expr) =
 	TypeInformation (insertTypeParameters $ foldr instantiateTypeVariable typ s) expr
 substituteTypedExpression s e = e
 
--- remove type information from expression
+-- remove type information from all terms in expression
 removeTypeInformation :: Expression -> Expression
-removeTypeInformation (TypeInformation _ expr) = expr
-removeTypeInformation (Ascription expr _) = expr
-removeTypeInformation e = e
+removeTypeInformation = mapExpression removeTypeInformation'
+
+-- remove type information from expression
+removeTypeInformation' :: Expression -> Expression
+removeTypeInformation' (TypeInformation _ expr) = expr
+removeTypeInformation' (Ascription expr _) = expr
+removeTypeInformation' e = e
 
 -- SUBSTITUTIONS
 type ExpressionSubstitution = (String, Expression)
