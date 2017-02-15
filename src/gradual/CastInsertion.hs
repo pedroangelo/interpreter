@@ -1,4 +1,6 @@
-module CastInsertion where
+module CastInsertion (
+	insertCasts
+) where
 
 -- Syntax & Types
 import Syntax

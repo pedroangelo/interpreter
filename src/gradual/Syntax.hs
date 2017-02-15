@@ -190,6 +190,7 @@ isValue e =
 	isValueCast e ||
 	isBlame e
 
+-- check if cast is a value
 isValueCast :: Expression -> Bool
 isValueCast (Cast t1 t2 e) =
 	(isGroundType t1 && isDynType t2 && isValue e) ||

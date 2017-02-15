@@ -81,9 +81,33 @@ example5 = Let "id"
 		(Application
 			(Variable "id")
 			(Int 2)))
+-- let (abs T X) (ID\(if (app (ID) (tt)) (app (ID) (zero)) (app (ID) (zero))))
+
+example5_err = Application (Abstraction "id" (If
+		(Application
+			(Variable "id")
+			(Bool True))
+		(Application
+			(Variable "id")
+			(Int 1))
+		(Application
+			(Variable "id")
+			(Int 2)))) (Abstraction "x" $ Variable "x")
+
+example5_err_2 = Application (Annotation "id" DynType (If
+		(Application
+			(Variable "id")
+			(Bool True))
+		(Application
+			(Variable "id")
+			(Int 1))
+		(Application
+			(Variable "id")
+			(Int 2)))) (Annotation "x" DynType $ Variable "x")
+-- app (abs dyn I\(if (app (I) (tt)) (app (I) (zero)) (app (I) (zero)))) (abs dyn X\X)
 
 -- let t = ((\x . x) True) in (if t then t else t)
-example5_1 = Let "id"
+example5_2 = Let "id"
 	(Application (Abstraction "x" (Variable "x")) (Bool True))
 	(If
 		(Variable "id")
@@ -95,9 +119,62 @@ example6 = Let "incr" (Annotation "x" DynType (Addition (Int 1) (Variable "x")))
 
 -- (\x : ? . 1 + x) True : Int
 example6_1 = Application (Annotation "x" DynType (Addition (Int 1) (Variable "x"))) (Bool True)
+-- (app (abs dyn (add (succ (zero)) x\)) (tt))
+--compToCC (app (abs dyn (X\(add (succ (zero)) X))) (tt)) A B.
 
 example6_2 = Application (Ascription (Abstraction "x" (Addition (Int 1) (Variable "x"))) (ArrowType DynType IntType)) (Bool True)
 
 example6_3 = Application (Abstraction "x" (Addition (Int 1) (Variable "x"))) (Int 1)
 
 example7 = Let "id" (Abstraction "x" $ Variable "x") (Application (Int 1) (Variable "id"))
+
+example8 = Addition (Int 1) (Int 1)
+
+example9 = Application (Annotation "x" DynType $ Variable "x") (Int 0)
+
+-- Tested Examples
+-- Still need to test execution with casts
+
+-- (\x . x) 1 : Int
+-- (app (abs int x\x) (zero))
+tested_1 = Application (Abstraction "x" $ Variable "x") (Int 0)
+
+-- (\x : ? . x) 0 : ?
+-- (app (abs dyn x\x) (zero))
+tested_1_dyn = Application (Annotation "x" DynType $ Variable "x") (Int 0)
+
+-- (\x : Int . 0 + x) True : TypeError
+tested_2 = Application (Annotation "x" IntType (Addition (Int 0) (Variable "x"))) (Bool True)
+-- (app (abs int (x\(add (zero) x))) (tt))
+
+-- (\x : ? . 0 + x) True : Int
+tested_2_dyn = Application (Annotation "x" DynType (Addition (Int 0) (Variable "x"))) (Bool True)
+-- (app (abs dyn (x\(add (zero) x))) (tt))
+
+-- let id = (\x . x) in (if (id True) then (id 0) else (id 0)) : ?
+tested_3_dyn = Let "id"
+	(Abstraction "x" (Variable "x"))
+	(If
+		(Application
+			(Variable "id")
+			(Bool True))
+		(Application
+			(Variable "id")
+			(Int 0))
+		(Application
+			(Variable "id")
+			(Int 0)))
+-- (let (abs dyn x\x) (i\(if (app (i) (tt)) (app (i) (zero)) (app (i) (zero)))))
+
+-- (\id : ? . if (id True) then (id 0) else (id 0)) (\x : ? . x) : ?
+tested_4_dyn = Application (Annotation "id" DynType (If
+		(Application
+			(Variable "id")
+			(Bool True))
+		(Application
+			(Variable "id")
+			(Int 1))
+		(Application
+			(Variable "id")
+			(Int 2)))) (Annotation "x" DynType $ Variable "x")
+-- (app (abs dyn id\(if (app id tt) (app id zero) (app id zero))) (abs dyn x\x))

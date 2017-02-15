@@ -67,14 +67,12 @@ isDynType _ = False
 
 -- check if is ground type
 isGroundType :: Type -> Bool
-isGroundType (ParType t1) = True
 isGroundType (ArrowType DynType DynType) = True
 isGroundType IntType = True
 isGroundType BoolType = True
 isGroundType _ = False
 
 getGroundType :: Type -> Type
-getGroundType e@(ParType _) = e
 getGroundType (ArrowType _ _) = ArrowType DynType DynType
 getGroundType IntType = IntType
 getGroundType BoolType = BoolType

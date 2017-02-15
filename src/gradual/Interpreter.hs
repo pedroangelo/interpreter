@@ -1,4 +1,6 @@
-module Interpreter where
+module Interpreter (
+	interpret
+) where
 
 -- Syntax & Types
 import Syntax
@@ -30,5 +32,6 @@ interpret expr = do
 			putStrLn $ "Expression type: " ++ (show typ)
 			let (Right typedExpr) = insertTypeInformation expr
 			let casts = removeTypeInformation $ insertCasts typedExpr
+			putStrLn $ "\nCast insertion: " ++ (show casts)
 			let result = evaluate casts
-			putStrLn $ "Evaluation result: " ++ (show result)
+			putStrLn $ "\nEvaluation result: " ++ (show result)
