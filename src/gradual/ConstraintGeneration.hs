@@ -10,6 +10,7 @@ import Types
 import Control.Monad.State
 import Control.Monad.Except
 import Data.Maybe
+import Data.Char
 
 -- generate constraint set and type given a context and expression
 generateConstraints :: (Context, Expression) -> StateT Int (Except String) (Type, Constraints, Expression)
@@ -25,10 +26,14 @@ generateConstraints (ctx, Variable var) = do
 		else do
 			-- retrieve type
 			let finalType = fromJust $ varType
+			i <- get
+			-- replace quantified variables by type variables
+			let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
+			put (i')
 			-- build typed expression
-			let typedExpr = TypeInformation finalType (Variable var)
+			let typedExpr = TypeInformation finalType' (Variable var)
 			-- return type
-			return (finalType, [], typedExpr)
+			return (finalType', [], typedExpr)
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do
@@ -38,7 +43,7 @@ generateConstraints (ctx, Abstraction var expr) = do
 	-- create new type variable
 	let newVar1 = newTypeVar i
 	-- create a binding between the abstraction variable and the new type variable
-	let binding = (var, newVar1)
+	let binding = (var, ForAll "" newVar1)
 	-- build type assignment with new binding
 	let typeAssignment = (binding : ctx, expr)
 	-- obtain type and generate constraints for new type assignment
@@ -79,7 +84,7 @@ generateConstraints (ctx, Ascription expr typ) = do
 -- (Cλ:) if expression is a annotated abstraction
 generateConstraints (ctx, Annotation var typ expr) = do
 	-- create a binding between the abstraction variable and the annotated type
-	let binding = (var, typ)
+	let binding = (var, ForAll "" typ)
 	-- build type assignment with new binding
 	let typeAssignment = (binding : ctx, expr)
 	-- obtain type and generate constraints for new type assignment
@@ -111,14 +116,12 @@ generateConstraints (ctx, Let var expr1 expr2) = do
 		let typeAssignment1 = (ctx, expr1)
 		-- obtain type and generate constraints for type assignment
 		(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+		-- generalize type variables
+		let t1' = generalizeTypeVariables t1
 		-- build type assignment for value
-		let typeAssignment2 = ((var, t1) : ctx, expr2)
+		let typeAssignment2 = ((var, t1') : ctx, expr2)
 		-- obtain type and generate constraints for type assignment
-		(_, _, expr2_typed) <- generateConstraints typeAssignment2
-		-- build type assignment for value
-		let typeAssignment = (ctx, substitute (var, expr1) expr2)
-		-- obtain type and generate constraints for type assignment
-		(t2, constraints2, _) <- generateConstraints typeAssignment
+		(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
 		-- build typed expression
 		let typedExpr = TypeInformation t2 (Let var expr1_typed expr2_typed)
 		-- return type along with all the constraints
@@ -343,6 +346,19 @@ generateConstraints (ctx, e@(TypeInformation typ expr)) = do
 	(t, constraints, _) <- generateConstraints typeAssignment
 	-- return type along with all the constraints
 	return (t, constraints, e)
+
+-- Replace type parameters with type variables
+replaceQuantifiedVariables :: Type -> State Int Type
+replaceQuantifiedVariables (ForAll var typ) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- obtain new type by replacing matched type parameters with fresh type variable
+	let typ' = substituteType (ParType var, newTypeVar i) typ
+	-- recursive call
+	replaceQuantifiedVariables typ'
+-- return when no more ForAll quantifier
+replaceQuantifiedVariables e = return e
 
 -- generate constraints and type for codomain relation
 codomain :: Type -> StateT Int (Except String) (Type, Constraints)

@@ -87,6 +87,19 @@ tested_2 = Application (Annotation "x" IntType (Addition (Int 0) (Variable "x"))
 tested_2_dyn = Application (Annotation "x" DynType (Addition (Int 0) (Variable "x"))) (Bool True)
 -- (app (abs dyn (x\(add (zero) x))) (tt))
 
+tested_3 = Let "id"
+	(Abstraction "x" (Variable "x"))
+	(If
+		(Application
+			(Variable "id")
+			(Bool True))
+		(Application
+			(Variable "id")
+			(Int 0))
+		(Application
+			(Variable "id")
+			(Int 0)))
+
 -- let id = (\x . x) in (if (id True) then (id 0) else (id 0)) : ?
 tested_3_dyn = Let "id"
 	(Annotation "x" DynType (Variable "x"))
