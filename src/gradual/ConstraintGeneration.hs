@@ -198,155 +198,52 @@ generateConstraints (ctx, If expr1 expr2 expr3) = do
 	return (t4, constraints1 ++ constraints2
 		++ constraints3 ++ constraints4 ++ [Consistency t1 BoolType], typedExpr)
 
--- (C+) if expression if an addition
-generateConstraints (ctx, Addition expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation IntType (Addition expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C-) if expression if a subtraction
-generateConstraints (ctx, Subtraction expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation IntType (Subtraction expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C*) if expression if a multiplication
-generateConstraints (ctx, Multiplication expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation IntType (Multiplication expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C/) if expression if a division
-generateConstraints (ctx, Division expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation IntType (Division expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (IntType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C==) if expression if a equality check
-generateConstraints (ctx, Equal expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation BoolType (Equal expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C/=) if expression if a not equality check
-generateConstraints (ctx, NotEqual expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation BoolType (NotEqual expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C<) if expression if a lesser than check
-generateConstraints (ctx, LesserThan expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation BoolType (LesserThan expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C>) if expression if a greater than check
-generateConstraints (ctx, GreaterThan expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation BoolType (GreaterThan expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C<=) if expression if a lesser than or equal to check
-generateConstraints (ctx, LesserEqualTo expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation BoolType (LesserEqualTo expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
-
--- (C>=) if expression if a greater than or equal to
-generateConstraints (ctx, GreaterEqualTo expr1 expr2) = do
-	-- build for each expression in the addition
-	-- a type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
-	-- obtain type and constraints for both expressions
-	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
-	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
-	-- build typed expression
-	let typedExpr = TypeInformation BoolType (GreaterEqualTo expr1_typed expr2_typed)
-	-- return type along with all the constraints
-	return (BoolType, constraints1 ++ constraints2 ++
-		[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
+-- if expression is an arithmetic or relational operator
+generateConstraints (ctx, expr)
+	-- if expression is an addition (C+), subtraction (C-),
+	-- multiplication (C*), or division (C/)
+	| isArithmeticOperator expr = do
+		-- build for each expression in the addition a type assignment
+		let typeAssignment1 = (ctx, expr1)
+		let typeAssignment2 = (ctx, expr2)
+		-- obtain type and constraints for both expressions
+		(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+		(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+		-- build typed expression
+		let expr_typed
+		 	| isAddition expr = Addition expr1_typed expr2_typed
+			| isSubtraction expr = Subtraction expr1_typed expr2_typed
+			| isMultiplication expr = Multiplication expr1_typed expr2_typed
+			| isDivision expr = Division expr1_typed expr2_typed
+		-- insert type information
+		let typedExpr = TypeInformation IntType expr_typed
+		-- return type along with all the constraints
+		return (IntType, constraints1 ++ constraints2 ++
+			[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
+	-- if expression is an equality (C==), not equality (C/=), lesser than (C<),
+	-- greater than (C>), lesser than or equal to (C<=) or greater than or equal to (C>=) check
+	| isRelationalOperator expr = do
+		-- build for each expression in the addition a type assignment
+		let typeAssignment1 = (ctx, expr1)
+		let typeAssignment2 = (ctx, expr2)
+		-- obtain type and constraints for both expressions
+		(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+		(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+		-- build typed expression
+		let expr_typed
+		 	| isEqual expr = Equal expr1_typed expr2_typed
+			| isNotEqual expr = NotEqual expr1_typed expr2_typed
+			| isLessThan expr = LesserThan expr1_typed expr2_typed
+			| isGreaterThan expr = GreaterThan expr1_typed expr2_typed
+			| isLessEqualTo expr = LesserEqualTo expr1_typed expr2_typed
+			| isGreaterEqualTo expr = GreaterEqualTo expr1_typed expr2_typed
+		-- insert type information
+		let typedExpr = TypeInformation BoolType expr_typed
+		-- return type along with all the constraints
+		return (BoolType, constraints1 ++ constraints2 ++
+			[Consistency t1 IntType, Consistency t2 IntType], typedExpr)
+	-- retrieve sub expressions from the operator
+	where (expr1, expr2) = fromOperator expr
 
 -- (C:) if expression if a type information
 generateConstraints (ctx, e@(TypeInformation typ expr)) = do

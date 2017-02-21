@@ -23,9 +23,9 @@ insertCasts e@(TypeInformation typ (Application expr1 expr2)) =
 		expr1' = insertCasts expr1
 		expr2' = insertCasts expr2
 		-- buid types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		d1 = patternMatch t1 ArrowT
+		TypeInformation t1 _ = expr1'
+		TypeInformation t2 _ = expr2'
+		d1 = patternMatchArrow t1
 		ArrowType d2 t = d1
 		-- build casts
 		cast1 = Cast t1 d1 expr1'
@@ -60,8 +60,8 @@ insertCasts e@(TypeInformation typ (Fix expr)) =
 		-- insert casts
 		expr' = insertCasts expr
 		-- build types
-		t = getType expr'
-		p = patternMatch t ArrowT
+		TypeInformation t _ = expr'
+		p = patternMatchArrow t
 		ArrowType d _ = p
 		-- build casts
 		cast = Cast t (ArrowType d d) expr'
@@ -74,9 +74,9 @@ insertCasts e@(TypeInformation typ (LetRec var expr1 expr2)) =
 		expr1' = insertCasts expr1
 		expr2' = insertCasts expr2
 		-- build types
-		t1 = getType expr1
-		t1' = getType expr1'
-		t2 = getType expr2'
+		TypeInformation t1 _ = expr1
+		TypeInformation t1' _ = expr1'
+		TypeInformation t2 _ = expr2'
 		-- build casts
 		cast = Cast t1' t1 expr1'
 	in TypeInformation t2 $ LetRec var cast expr2'
@@ -89,9 +89,9 @@ insertCasts e@(TypeInformation typ (If expr1 expr2 expr3)) =
 		expr2' = insertCasts expr2
 		expr3' = insertCasts expr3
 		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		t3 = getType expr3'
+		TypeInformation t1 _ = expr1'
+		TypeInformation t2 _ = expr2'
+		TypeInformation t3 _ = expr3'
 		d = joinType t2 t3
 		-- build casts
 		cast1 = Cast t1 BoolType expr1'
@@ -99,157 +99,54 @@ insertCasts e@(TypeInformation typ (If expr1 expr2 expr3)) =
 		cast3 = Cast t3 d expr3'
 	in TypeInformation d $ If cast1 cast2 cast3
 
--- if expression is an addition
-insertCasts e@(TypeInformation typ (Addition expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation IntType $ Addition cast1 cast2
-
--- if expression is a subtraction
-insertCasts e@(TypeInformation typ (Subtraction expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation IntType $ Subtraction cast1 cast2
-
--- if expression is a multiplication
-insertCasts e@(TypeInformation typ (Multiplication expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation IntType $ Multiplication cast1 cast2
-
--- if expression is a division
-insertCasts e@(TypeInformation typ (Division expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation IntType $ Division cast1 cast2
-
--- if expression is a equality check
-insertCasts e@(TypeInformation typ (Equal expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation BoolType $ Equal cast1 cast2
-
--- if expression is a non equality check
-insertCasts e@(TypeInformation typ (NotEqual expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation BoolType $ NotEqual cast1 cast2
-
--- if expression is a lesser than check
-insertCasts e@(TypeInformation typ (LesserThan expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation BoolType $ LesserThan cast1 cast2
-
--- if expression is a greater than check
-insertCasts e@(TypeInformation typ (GreaterThan expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation BoolType $ GreaterThan cast1 cast2
-
--- if expression is a lesser than or equal to check
-insertCasts e@(TypeInformation typ (LesserEqualTo expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation BoolType $ LesserEqualTo cast1 cast2
-
--- if expression is a greater than or equal to check
-insertCasts e@(TypeInformation typ (GreaterEqualTo expr1 expr2)) =
-	let
-		-- insert casts
-		expr1' = insertCasts expr1
-		expr2' = insertCasts expr2
-		-- build types
-		t1 = getType expr1'
-		t2 = getType expr2'
-		-- build casts
-		cast1 = Cast t1 IntType expr1'
-		cast2 = Cast t2 IntType expr2'
-	in TypeInformation BoolType $ GreaterEqualTo cast1 cast2
-
--- get type information
-getType :: Expression -> Type
-getType (TypeInformation typ _) = typ
-
-data TypeTemplate
-	= ArrowT
+-- if expression is an arithmetic or relational operator
+insertCasts e@(TypeInformation typ expr)
+	-- if expression is an addition, subtraction, multiplication, or division
+	| isArithmeticOperator expr =
+		let
+			-- insert casts
+			expr1' = insertCasts expr1
+			expr2' = insertCasts expr2
+			-- build types
+			TypeInformation t1 _ = expr1'
+			TypeInformation t2 _ = expr2'
+			-- build casts
+			cast1 = Cast t1 IntType expr1'
+			cast2 = Cast t2 IntType expr2'
+			cast
+				| isAddition expr = Addition cast1 cast2
+				| isSubtraction expr = Subtraction cast1 cast2
+				| isMultiplication expr = Multiplication cast1 cast2
+				| isDivision expr = Division cast1 cast2
+		in TypeInformation IntType cast
+	-- if expression is equality, not equality, lesser than,
+	-- greater than, lesser than or equal to or greater than or equal to check
+	| isRelationalOperator expr =
+		let
+			-- insert casts
+			expr1' = insertCasts expr1
+			expr2' = insertCasts expr2
+			-- build types
+			TypeInformation t1 _ = expr1'
+			TypeInformation t2 _ = expr2'
+			-- build casts
+			cast1 = Cast t1 IntType expr1'
+			cast2 = Cast t2 IntType expr2'
+			cast
+				| isEqual expr = Equal cast1 cast2
+				| isNotEqual expr = NotEqual cast1 cast2
+				| isLessThan expr = LesserThan cast1 cast2
+				| isGreaterThan expr = GreaterThan cast1 cast2
+				| isLessEqualTo expr = LesserEqualTo cast1 cast2
+				| isGreaterEqualTo expr = GreaterEqualTo cast1 cast2
+		in TypeInformation BoolType cast
+	-- retrieve sub expressions from the operator
+	where (expr1, expr2) = fromOperator expr
 
 -- obtain pattern match type
-patternMatch :: Type -> TypeTemplate -> Type
-patternMatch e@(ArrowType type1 type2) ArrowT = e
-patternMatch e@(DynType) ArrowT = ArrowType DynType DynType
+patternMatchArrow :: Type -> Type
+patternMatchArrow e@(ArrowType type1 type2) = e
+patternMatchArrow e@(DynType) = ArrowType DynType DynType
 
 -- obtain join of types
 joinType :: Type -> Type -> Type

@@ -201,6 +201,37 @@ isValueCast (Cast t1 t2 e) =
 	(isForAllType t1 && isForAllType t2 && t1 /= t2 && isValue e)
 isValueCast _ = False
 
+-- check if is an arithmetic operator
+isArithmeticOperator :: Expression -> Bool
+isArithmeticOperator (Addition _ _) = True
+isArithmeticOperator (Subtraction _ _) = True
+isArithmeticOperator (Multiplication _ _) = True
+isArithmeticOperator (Division _ _) = True
+isArithmeticOperator _ = False
+
+-- check if is a relational operator
+isRelationalOperator :: Expression -> Bool
+isRelationalOperator (Equal _ _) = True
+isRelationalOperator (NotEqual _ _) = True
+isRelationalOperator (LesserThan _ _) = True
+isRelationalOperator (GreaterThan _ _) = True
+isRelationalOperator (LesserEqualTo _ _) = True
+isRelationalOperator (GreaterEqualTo _ _) = True
+isRelationalOperator _ = False
+
+-- get expressions from arithmetic and relational operators
+fromOperator :: Expression -> (Expression, Expression)
+fromOperator (Addition expr1 expr2) = (expr1, expr2)
+fromOperator (Subtraction expr1 expr2) = (expr1, expr2)
+fromOperator (Multiplication expr1 expr2) = (expr1, expr2)
+fromOperator (Division expr1 expr2) = (expr1, expr2)
+fromOperator (Equal expr1 expr2) = (expr1, expr2)
+fromOperator (NotEqual expr1 expr2) = (expr1, expr2)
+fromOperator (LesserThan expr1 expr2) = (expr1, expr2)
+fromOperator (GreaterThan expr1 expr2) = (expr1, expr2)
+fromOperator (LesserEqualTo expr1 expr2) = (expr1, expr2)
+fromOperator (GreaterEqualTo expr1 expr2) = (expr1, expr2)
+
 -- substitute types in annotations and type information in all terms
 -- using the substitutions generated during constraint unification
 substituteTypedExpression :: TypeSubstitutions -> Expression -> Expression
