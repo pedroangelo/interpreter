@@ -44,8 +44,8 @@ typeInference expr = do
 	let substitutions = cu
 	-- replace unconstrained type variables by type parameters
 	-- discover final type by applying all substitutions to expression type t
-	let finalType = insertTypeParameters $ foldr instantiateTypeVariable typ substitutions
+	let finalType = generalizeTypeVariables $ foldr instantiateTypeVariable typ substitutions
 	-- replace unconstrained type variables by type parameters
 	-- discover final types by applying all substitutions to each type ascription and type information in the expression
-	let typedExpr = mapExpression (substituteTypedExpression substitutions) expr_typed
+	let typedExpr = substituteTypedExpression substitutions expr_typed
 	return (finalType, typedExpr)

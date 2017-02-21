@@ -2,6 +2,7 @@ module Types where
 
 -- Imports
 import Data.Char
+import Data.List
 
 -- Context holds bindings between variables and types
 type Context = [Bindings]
@@ -76,17 +77,24 @@ isDynType :: Type -> Bool
 isDynType (DynType) = True
 isDynType _ = False
 
+-- check if is for all quantifier
+isForAllType :: Type -> Bool
+isForAllType (ForAll _ _) = True
+isForAllType _ = False
+
 -- check if is ground type
 isGroundType :: Type -> Bool
 isGroundType (ArrowType DynType DynType) = True
 isGroundType IntType = True
 isGroundType BoolType = True
+isGroundType (ForAll _ DynType) = True
 isGroundType _ = False
 
 getGroundType :: Type -> Type
 getGroundType (ArrowType _ _) = ArrowType DynType DynType
 getGroundType IntType = IntType
 getGroundType BoolType = BoolType
+getGroundType (ForAll _ _) = ForAll "" DynType
 
 sameGround :: Type -> Type -> Bool
 sameGround t1 t2 = getGroundType t1 == getGroundType t2
@@ -143,7 +151,7 @@ generalizeTypeVariables :: Type -> Type
 generalizeTypeVariables t =
 	let
 		-- get list of type variables
-		vars = countTypeVariable t
+		vars = nub $ countTypeVariable t
 		-- replace type variables with type parameters
 		t' = insertTypeParameters t
 	-- insert forall quantifiers
