@@ -194,10 +194,7 @@ isValue e =
 isValueCast :: Expression -> Bool
 isValueCast (Cast t1 t2 e) =
 	(isGroundType t1 && isDynType t2 && isValue e) ||
-	(let
-		(ArrowType t11 t12) = t1
-		(ArrowType t21 t22) = t2
-	in isArrowType t1 && isArrowType t2 && isValue e && t11 /= t21 && t12 /= t22) ||
+	(isArrowType t1 && isArrowType t2 && isValue e && t1 /= t2) ||
 	(isForAllType t1 && isForAllType t2 && t1 /= t2 && isValue e)
 isValueCast _ = False
 
@@ -241,9 +238,9 @@ substituteTypedExpression s = mapExpression (substituteTypedExpression' s)
 -- using the substitutions generated during constraint unification
 substituteTypedExpression' :: TypeSubstitutions -> Expression -> Expression
 substituteTypedExpression' s (Ascription expr typ) =
-	Ascription expr (insertTypeParameters $ foldr instantiateTypeVariable typ s)
+	Ascription expr (insertTypeParameters $ foldr substituteType typ s)
 substituteTypedExpression' s (TypeInformation typ expr) =
-	TypeInformation (insertTypeParameters $ foldr instantiateTypeVariable typ s) expr
+	TypeInformation (insertTypeParameters $ foldr substituteType typ s) expr
 substituteTypedExpression' s e = e
 
 -- remove type information from all terms in expression

@@ -13,7 +13,8 @@ import Data.Maybe
 import Data.Char
 
 -- generate constraint set and type given a context and expression
-generateConstraints :: (Context, Expression) -> StateT Int (Except String) (Type, Constraints, Expression)
+generateConstraints :: (Context, Expression)
+	-> StateT Int (Except String) (Type, Constraints, Expression)
 
 -- (Cx) if expression is a variable
 generateConstraints (ctx, Variable var) = do
@@ -28,6 +29,7 @@ generateConstraints (ctx, Variable var) = do
 			let finalType = fromJust $ varType
 			i <- get
 			-- replace quantified variables by type variables
+			-- instantiation of Damas-Milner
 			let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
 			put (i')
 			-- build typed expression
@@ -191,7 +193,7 @@ generateConstraints (ctx, If expr1 expr2 expr3) = do
 	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
 	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
 	(t3, constraints3, expr3_typed) <- generateConstraints typeAssignment3
-	let (t4, constraints4) = meet t2 t3
+	(t4, constraints4) <- lift $ meet t2 t3
 	-- build typed expression
 	let typedExpr = TypeInformation t4 (If expr1_typed expr2_typed expr3_typed)
 	-- return type along with all the constraints
@@ -318,19 +320,18 @@ domain t1 t2
 	| otherwise = throwError "domain"
 
 -- generate constraints and type for meet relation
-meet :: Type -> Type -> (Type, Constraints)
+meet :: Type -> Type -> Except String (Type, Constraints)
 meet t1 t2
-	| isIntType t1 && isIntType t2 = (IntType, [])
-	| isBoolType t1 && isBoolType t2 = (BoolType, [])
-	| isParType t1 && isParType t2 && t1 == t2 = (t1, [])
-	| isDynType t2 = (t1, [Consistency t1 DynType])
-	| isDynType t1 = (t2, [Consistency DynType t2])
-	| isVarType t1 = (t1, [Consistency t1 t2])
-	| (not $ isVarType t1) && isVarType t2 = (t2, [Consistency t1 t2])
-	| isArrowType t1 && isArrowType t2 =
-		let
-			(ArrowType t11 t12) = t1
-			(ArrowType t21 t22) = t2
-			(t1', constraints1) = meet t11 t21
-			(t2', constraints2) = meet t12 t22
-		in (ArrowType t1' t2', constraints1 ++ constraints2)
+	| isIntType t1 && isIntType t2 = return (IntType, [])
+	| isBoolType t1 && isBoolType t2 = return (BoolType, [])
+	| isDynType t2 = return (t1, [Consistency t1 DynType])
+	| isDynType t1 = return (t2, [Consistency DynType t2])
+	| isVarType t1 = return (t1, [Consistency t1 t2])
+	| (not $ isVarType t1) && isVarType t2 = return (t2, [Consistency t1 t2])
+	| isArrowType t1 && isArrowType t2 = do
+		let	(ArrowType t11 t12) = t1
+		let (ArrowType t21 t22) = t2
+		(t1', constraints1) <- meet t11 t21
+		(t2', constraints2) <- meet t12 t22
+		return (ArrowType t1' t2', constraints1 ++ constraints2)
+	| otherwise = throwError "meet"

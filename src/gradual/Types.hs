@@ -9,7 +9,6 @@ type Context = [Bindings]
 type Bindings = (String, Type)
 
 -- Types in λ-calculus and extensions
--- Types
 data Type
 	= VarType String
 	| ParType String
@@ -18,7 +17,7 @@ data Type
 	| BoolType
 	| DynType
 	| ForAll String Type
-	deriving (Show, Eq, Ord)
+	deriving (Show, Eq)
 
 -- Constraints
 type Constraints = [Constraint]
@@ -37,15 +36,26 @@ mapType f t@(BoolType) = f t
 mapType f t@(DynType) = f t
 mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
 
+-- given a test function, collect all types that suceed in the test
+retrieveType :: (Type -> Bool) -> Type -> [Type]
+retrieveType f t@(ArrowType t1 t2) =
+	let
+		t1' = retrieveType f t1
+		t2' = retrieveType f t2
+		t' = if f t then [t] else []
+	in t' ++ t1' ++ t2'
+retrieveType f t@(ForAll var typ) =
+	let
+		typ' = retrieveType f typ
+		t' = if f t then [t] else []
+	in t' ++ typ'
+retrieveType f t = if f t then [t] else []
+
 -- HELPER FUNCTIONS
 
 -- build new type variable
 newTypeVar :: Int -> Type
 newTypeVar index = VarType ("t" ++ show index)
-
--- build new type parameter
-newTypePar :: Int -> Type
-newTypePar index = ParType ("T" ++ show index)
 
 -- check if is variable type
 isVarType :: Type -> Bool
@@ -90,12 +100,14 @@ isGroundType BoolType = True
 isGroundType (ForAll _ DynType) = True
 isGroundType _ = False
 
+-- get ground type
 getGroundType :: Type -> Type
 getGroundType (ArrowType _ _) = ArrowType DynType DynType
 getGroundType IntType = IntType
 getGroundType BoolType = BoolType
 getGroundType (ForAll _ _) = ForAll "" DynType
 
+-- check if types have the same ground type
 sameGround :: Type -> Type -> Bool
 sameGround t1 t2 = getGroundType t1 == getGroundType t2
 
@@ -122,20 +134,9 @@ substituteType s@(old, new) t@(ForAll var t') =
 -- apply substitution to constraints
 substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
 substituteConstraint s (Equality t1 t2) =
-	Equality (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
+	Equality (substituteType s t1) (substituteType s t2)
 substituteConstraint s (Consistency t1 t2) =
-	Consistency (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
-
--- instantiate type variables with a type
-instantiateTypeVariable :: TypeSubstitution -> Type -> Type
-instantiateTypeVariable s = mapType (instantiateTypeVariable' s)
-
--- instantiate type variable with a type
-instantiateTypeVariable' :: TypeSubstitution -> Type -> Type
-instantiateTypeVariable' (s1, s2) t@(VarType var)
-	| s1 == t = s2
-	| otherwise = t
-instantiateTypeVariable' s t = t
+	Consistency (substituteType s t1) (substituteType s t2)
 
 -- transform unconstrained type variables into type parameters
 insertTypeParameters :: Type -> Type

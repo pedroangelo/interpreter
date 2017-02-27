@@ -4,6 +4,8 @@ module Examples where
 import Syntax
 import Types
 
+-- STANDARD TERMS
+
 -- (λx.x) : T1 -> T1
 lambda_I = Abstraction "x" (Variable "x")
 
@@ -33,40 +35,6 @@ lambda_Omega = Application (lambda_omega) (lambda_omega)
 
 -- (λg.(λx.g (x x)) (λx.g (x x))) : undefined
 lambda_Y = Abstraction "g" (Application (Abstraction "x" (Application (Variable "g") (Application (Variable "x") (Variable "x")))) (Abstraction "x" (Application (Variable "g") (Application (Variable "x") (Variable "x")))))
-
--- (λx:? . (λy . y) x) : ? -> A
-example1 = Annotation "x" DynType
-	(Application
-		(Abstraction "y" (Variable "y"))
-		(Variable "x"))
-
--- (λx : T -> T1 -> T2 . λy . λz . (xz) (yz)) : (A -> B -> C) -> (A -> B) -> A -> C
-example2 = Annotation "x" (ArrowType (ParType "A") (ArrowType (ParType "B") (ParType "C")))
-	(Abstraction "y"
-		(Abstraction "z"
-			(Application
-				(Application
-					(Variable "x")
-					(Variable "z"))
-				(Application
-					(Variable "y")
-					(Variable "z")))))
-
--- (λx : A -> B . λy . x y) : (A -> B) -> A -> B
-example3 = Annotation "x" (ArrowType (ParType "A") (ParType "B"))
-	(Abstraction "y"
-		(Application
-			(Variable "x")
-			(Variable "y")))
-
--- (λx . if x then (λy : ? -> B . y) else (λz : A -> ? . z)) : Bool -> (A -> B) -> A -> B
-example4 = Abstraction "x"
-	(If
-		(Variable "x")
-		(Annotation "y" (ArrowType DynType (ParType "B"))
-			(Variable "y"))
-		(Annotation "z" (ArrowType (ParType "A") DynType)
-			(Variable "z")))
 
 -- Tested Examples
 -- Still need to test execution with casts
@@ -119,6 +87,17 @@ tested_3_dyn = Let "id"
 			(Variable "id")
 			(Int 2)))
 
+tested_4 = Application (Abstraction "id" (If
+		(Application
+			(Variable "id")
+			(Bool True))
+		(Application
+			(Variable "id")
+			(Int 1))
+		(Application
+			(Variable "id")
+			(Int 2)))) (Abstraction "x" $ Variable "x")
+
 -- (λid : ? . if (id True) then (id 0) else (id 0)) (λx : ? . x) : ?
 -- Expression: (app (abs dyn id\(if (app id tt) (app id zero) (app id zero))) (abs dyn x\x))
 -- Compiled: (app (cast (abs dyn (W1\ if (cast (app (cast W1 dyn (_T1 W1) (arrow dyn dyn)) (cast tt bool (_T1 W1) dyn)) dyn (_T2 W1) bool) (cast (app (cast W1 dyn (_T3 W1) (arrow dyn dyn)) (cast zero int (_T3 W1) dyn)) dyn (_T2 W1) dyn) (cast (app (cast W1 dyn (_T4 W1) (arrow dyn dyn)) (cast zero int (_T4 W1) dyn)) dyn (_T2 W1) dyn))) (arrow dyn dyn) _T5 (arrow dyn dyn)) (cast (abs dyn (W1\ W1)) (arrow dyn dyn) _T5 dyn))
@@ -140,14 +119,71 @@ tested_5_dyn = Let "incr"
 	(Annotation "x" DynType $ Addition (Int 1) (Variable "x"))
 	(Application (Variable "incr") (Bool True))
 
--- (λn1 . λn2 . n1 + n2) : Int -> Int -> Int
--- Expression: (abs int x\(abs int y\(add x y)))
--- Compiled: (abs int (W1\ abs int (W2\ add (cast W1 int (_T1 W1 W2) int) (cast W2 int (_T1 W1 W2) int))))
-tested_6 = Abstraction "n1" $ Abstraction "n2" $ Addition (Variable "n1") (Variable "n2")
-
 -- (λx : ? . if x then 1 else 2) 1 : Int
 -- Expression: (app (abs dyn x\(if x zero zero)) zero)
 -- Compiled: (app (cast (abs dyn (W1\ if (cast W1 dyn (_T1 W1) bool) (cast zero int (_T1 W1) int) (cast zero int (_T1 W1) int))) (arrow dyn int) _T2 (arrow dyn int)) (cast zero int _T2 dyn))
-tested_7 = Application
+tested_6 = Application
 	(Annotation "x" DynType $ If (Variable "x") (Int 1) (Int 2))
 	(Int 1)
+
+-- (λn1 . λn2 . n1 + n2) : Int -> Int -> Int
+-- Expression: (abs int x\(abs int y\(add x y)))
+-- Compiled: (abs int (W1\ abs int (W2\ add (cast W1 int (_T1 W1 W2) int) (cast W2 int (_T1 W1 W2) int))))
+plus = Abstraction "n1" $ Abstraction "n2" $ Addition (Variable "n1") (Variable "n2")
+
+-- (λx . if (x == 0) then True else False) : Int -> Bool
+isZero = Abstraction "x" $ If (Equal (Variable "x") (Int 0)) (Bool True) (Bool False)
+
+-- (λx:? . (λy . y) x) : ? -> ?
+parameters_1 = Annotation "x" DynType
+	(Application
+		(Abstraction "y" (Variable "y"))
+		(Variable "x"))
+
+-- (λx : ? . (λy . y) x) 1 : ?
+parameters_2 = Application
+	parameters_1
+	(Int 1)
+
+-- (λx : ? . (λz . z) x) (+) : ?
+parameters_3 = Application
+	parameters_1
+	plus
+
+-- ((λx : ? . (λz . z) x) (+)) 3 2 : ?
+parameters_4 = Application
+	(Application
+		parameters_3
+		(Int 3))
+	(Int 2)
+
+-- ((λx:? . (λy . y) x) isZero) 1 : ?
+parameters_5 = Application
+	(Application
+		parameters_1
+		isZero)
+	(Int 1)
+
+-- ((λx:? . (λy . y) x) isZero) True : ?
+parameters_5_err = Application
+	(Application
+		parameters_1
+		isZero)
+	(Bool True)
+
+-- (λx:? . if x then 1 else 2) (λx:? . (λy . y) x) True : Int
+parameters_6 = Application
+	(Annotation "x" DynType $ If (Variable "x") (Int 1) (Int 2))
+	(Application
+		(parameters_1)
+		(Bool True))
+
+-- (λx:? . if x then 1 else 2) (λx:? . (λy . y) x) 1 : Int
+parameters_6_err_1 = Application
+	(Annotation "x" DynType $ If (Variable "x") (Int 1) (Int 2))
+	parameters_2
+
+-- (λx:? . if x then 1 else True) (λx:? . (λy . y) x) 1 : TypeError
+parameters_6_err_2 = Application
+	(Annotation "x" DynType $ If (Variable "x") (Int 1) (Bool True))
+	parameters_2

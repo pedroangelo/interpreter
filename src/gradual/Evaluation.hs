@@ -319,12 +319,17 @@ evaluate e@(Cast t1 t2 expr)
 	| isValue e = e
 	-- evaluate inside a cast
 	| (not $ isValue expr) =
-		let expr' = evaluate expr
-		in evaluate $ Cast t1 t2 expr'
+		let expr2 = evaluate expr
+		in evaluate $ Cast t1 t2 expr2
 	-- ID-BASE - remove casts to same types
-	| (isValue expr) && t1 == t2 = evaluate expr
-	-- evaluate double casts on expression
-	| isCast expr = evaluate $ treatDoubleCasts e
+	| isValue expr && t1 == t2 = evaluate expr
+	-- SUCCEED - cast is sucessful
+	| isCast expr && t1 == DynType && t2' == DynType &&	isGroundType t2 && t1' == t2 =
+			evaluate expr'
+	-- FAIL - cast fails
+	| isCast expr && t1 == DynType && t2' == DynType &&
+		isGroundType t2 && isGroundType t1' && (not $ sameGround t1' t2) =
+			Blame t2 $ "cannot cast from " ++ (show t1') ++ " to " ++ (show t2)
 	-- GROUND - cast types through their ground types
 	| (not $ isGroundType t1) && t2 == DynType =
 		let g = getGroundType t1
@@ -333,16 +338,9 @@ evaluate e@(Cast t1 t2 expr)
 	| (not $ isGroundType t2) && t1 == DynType =
 		let g = getGroundType t2
 		in evaluate $ Cast g t2 $ Cast DynType g expr
+	-- Project types and expression from inner casts
+	where
+		(Cast t1' t2' expr') = expr
 
 -- if expression is a blame label
 evaluate e@(Blame t label) = e
-
--- evaluate double casts on expressions
-treatDoubleCasts :: Expression -> Expression
-treatDoubleCasts (Cast t1 t2 (Cast t1' t2' expr))
-	-- SUCCEED - cast is sucessful
-	| isGroundType t1' && t1' == t2 &&
-		t2' == DynType && t1 == DynType = expr
-	-- FAIL - cast fails
-	| isGroundType t1' && isGroundType t2 && (not $ sameGround t1' t2) &&
-		t2' == DynType && t1 == DynType = Blame t2 $ "cannot cast from " ++ (show t1') ++ " to " ++ (show t2)

@@ -11,38 +11,38 @@ import Control.Monad.Except
 import Data.Maybe
 
 -- unify constraints to generate substitutions
-unifyConstraints :: Constraints -> Int -> Except String TypeSubstitutions
-unifyConstraints [] _ = do
-	return []
+unifyConstraints :: [Type] -> Constraints -> Int -> Except String ([Type], TypeSubstitutions)
+unifyConstraints types [] _ = do
+	return (types, [])
 
 -- for consistenty constraints
-unifyConstraints ((Consistency t1 t2) : cs) counter
+unifyConstraints types ((Consistency t1 t2) : cs) counter
 	-- U ((t ~C t) : cs) => U cs
 	| t1 == t2 = do
-		unifyConstraints cs counter
+		unifyConstraints types cs counter
 	-- U ((? ~C t) : cs) => U cs
 	| t1 == DynType = do
-		unifyConstraints cs counter
+		unifyConstraints (types ++ [t2]) cs counter
 	-- U ((t ~C ?) : cs) => U cs
 	| t2 == DynType = do
-		unifyConstraints cs counter
+		unifyConstraints (types ++ [t1]) cs counter
 	-- U ((t11 -> t12 ~C t21 -> t22) : cs)
 	-- => U ((t12 ~C t22, t11 ~C t21) : cs)
 	| isArrowType t1 && isArrowType t2 = do
 		let (ArrowType t11 t12) = t1
 		let (ArrowType t21 t22) = t2
 		let constraints = [Consistency t12 t22, Consistency t11 t21]
-		unifyConstraints (constraints ++ cs) counter
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 ~C t1) : cs)
 	| (not $ isVarType t1) && isVarType t2 = do
 		let constraints = [Consistency t2 t1]
-		unifyConstraints (constraints ++ cs) counter
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t2) : cs), t1 ∈ {Int, Bool} ∪ TVar ∪ TParam
 	-- => U ((t1 =C t2) : cs)
 	| isVarType t1 && (isIntType t2 || isBoolType t2 || isVarType t2 || isParType t2) = do
 		let constraints = [Equality t1 t2]
-		unifyConstraints (constraints ++ cs) counter
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t21 -> t22) : cs), t1 ∉ Vars(t21 -> t22)
 	-- => U ((t12 ~C t22, t11 ~C t21, t1 =C t11 -> t12) : cs)
 	| isVarType t1 && isArrowType t2 && (not $ belongs t1 t2) = do
@@ -52,33 +52,35 @@ unifyConstraints ((Consistency t1 t2) : cs) counter
 		let constraints = [Consistency t12 t22,
 			Consistency t11 t21,
 			Equality t1 (ArrowType t11 t12)]
-		unifyConstraints (constraints ++ cs) (counter+2)
+		unifyConstraints types (constraints ++ cs) (counter+2)
 	-- if no constraint matches, then throw error
 	| otherwise = throwError "err"
 
 -- for equality constraints
-unifyConstraints ((Equality t1 t2) : cs) counter
+unifyConstraints types ((Equality t1 t2) : cs) counter
 	-- -- U ((t =C t) : cs) => U cs
 	| t1 == t2 = do
-		unifyConstraints cs counter
+		unifyConstraints types cs counter
 	-- U ((t11 -> t12 =C t21 -> t22) : cs)
 	-- => U ((t12 =C t22, t11 =C t21) : cs)
 	| isArrowType t1 && isArrowType t2 = do
 		let	(ArrowType t11 t12) = t1
 		let (ArrowType t21 t22) = t2
 		let constraints = [Equality t12 t22, Equality t11 t21]
-		unifyConstraints (constraints ++ cs) counter
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 =C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 =C t1) : cs)
 	| (not $ isVarType t1) && isVarType t2 = do
 		let constraints = [Equality t2 t1]
-		unifyConstraints (constraints ++ cs) counter
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 =C t2) : cs), t1 ∉ TVars
 	-- => U ([t1 ↦ t2] cs) ∘ [t1 ↦ t2]
 	| isVarType t1 && (not $ belongs t1 t2) = do
 		let s = (t1, t2)
-		constraints <- unifyConstraints (map (substituteConstraint s) cs) counter
-		return $ constraints ++ [s]
+		(types', substitutions) <- unifyConstraints
+			(map (substituteType s) types)
+			(map (substituteConstraint s) cs) counter
+		return $ (types', substitutions ++ [s])
 	-- if no constraint matches, then throw error
 	| otherwise = throwError "err"
 

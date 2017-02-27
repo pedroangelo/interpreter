@@ -16,6 +16,7 @@ import ConstraintUnification
 import Control.Monad.State
 import Control.Monad.Except
 import Data.Either
+import Data.List
 
 -- infer the type of the expression
 inferType :: Expression -> Either String Type
@@ -39,13 +40,17 @@ typeInference expr = do
 	-- retrieve constraints
 	let ((typ, constraints, expr_typed), counter) = cg
 	-- unify constraints and generate substitutions
-	cu <- runExcept $ unifyConstraints (reverse constraints) counter
-	-- retrieve substitutions
-	let substitutions = cu
+	cu <- runExcept $ unifyConstraints [] (reverse constraints) counter
+	-- retrieve gradual types and substitutions
+	let (gtypes, substitutions) = cu
+	-- filter gradual type variables
+	let gtypes' = nub $ concat $ map (retrieveType isVarType) gtypes
+	-- add substitutions from types present in gtypes to dynamic type
+	let substitutions' = (map (\x -> (x, DynType)) gtypes') ++ substitutions
 	-- replace unconstrained type variables by type parameters
 	-- discover final type by applying all substitutions to expression type t
-	let finalType = generalizeTypeVariables $ foldr instantiateTypeVariable typ substitutions
+	let finalType = generalizeTypeVariables $ foldr substituteType typ substitutions'
 	-- replace unconstrained type variables by type parameters
 	-- discover final types by applying all substitutions to each type ascription and type information in the expression
-	let typedExpr = substituteTypedExpression substitutions expr_typed
+	let typedExpr = substituteTypedExpression substitutions' expr_typed
 	return (finalType, typedExpr)
