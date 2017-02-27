@@ -28,5 +28,5 @@ inferType expr = do
 	let substitutions = cu
 	-- replace unconstrained type variables by type parameters
 	-- discover final type by applying all substitutions to expression type t
-	let finalType = insertTypeParameters $ foldr substituteType typ substitutions
+	let finalType = generalizeTypeVariables $ foldr substituteType typ substitutions
 	return finalType
