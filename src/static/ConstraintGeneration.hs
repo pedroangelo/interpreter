@@ -22,7 +22,7 @@ generateConstraints (ctx, Variable var) = do
 	-- check if variable exists in context
 	if isNothing varType
 		-- if not, throw error
-		then throwError $ "Variable " ++ var ++ " does not exist"
+		then throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
 		else do
 			-- retrieve type
 			let finalType = fromJust $ varType

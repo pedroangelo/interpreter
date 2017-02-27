@@ -23,7 +23,7 @@ generateConstraints (ctx, Variable var) = do
 	-- check if variable exists in context
 	if isNothing varType
 		-- if not, throw error
-		then throwError $ "Variable " ++ var ++ " does not exist"
+		then throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
 		else do
 			-- retrieve type
 			let finalType = fromJust $ varType
@@ -292,7 +292,7 @@ codomain t
 		-- return dynamic typ
 		return (DynType, [])
 	-- throw error
-	| otherwise = throwError "codomain"
+	| otherwise = throwError $ "Error: Type " ++ (show t) ++ " has no codomain!!"
 
 -- generate constraints for domain relation
 domain :: Type -> Type -> StateT Int (Except String) Constraints
@@ -317,7 +317,7 @@ domain t1 t2
 		-- return constraints ? ~C t2
 		return [Consistency DynType t2]
 	-- throw error
-	| otherwise = throwError "domain"
+	| otherwise = throwError $ "Error: Type " ++ (show t1) ++ " has no domain!!"
 
 -- generate constraints and type for meet relation
 meet :: Type -> Type -> Except String (Type, Constraints)
@@ -334,4 +334,5 @@ meet t1 t2
 		(t1', constraints1) <- meet t11 t21
 		(t2', constraints2) <- meet t12 t22
 		return (ArrowType t1' t2', constraints1 ++ constraints2)
-	| otherwise = throwError "meet"
+	| otherwise = throwError $
+		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not compatible!!"

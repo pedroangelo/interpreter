@@ -54,7 +54,8 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 			Equality t1 (ArrowType t11 t12)]
 		unifyConstraints types (constraints ++ cs) (counter+2)
 	-- if no constraint matches, then throw error
-	| otherwise = throwError "err"
+	| otherwise = throwError $
+		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not consistent!!"
 
 -- for equality constraints
 unifyConstraints types ((Equality t1 t2) : cs) counter
@@ -82,7 +83,8 @@ unifyConstraints types ((Equality t1 t2) : cs) counter
 			(map (substituteConstraint s) cs) counter
 		return $ (types', substitutions ++ [s])
 	-- if no constraint matches, then throw error
-	| otherwise = throwError "err"
+	| otherwise = throwError $
+		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not equal!!"
 
 -- test if type variable exists in typ
 belongs :: Type -> Type -> Bool

@@ -38,7 +38,8 @@ unifyConstraints ((Equality t1 t2) : cs) counter
 		substitutions <- (unifyConstraints (map (substituteConstraint s) cs) counter)
 		return $ substitutions ++ [s]
 	-- if no constraint matches, then throw error
-	| otherwise = throwError "err"
+	| otherwise = throwError $
+		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not equal!!"
 
 -- test if type variable exists in typ
 belongs :: Type -> Type -> Bool
