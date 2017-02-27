@@ -8,17 +8,26 @@ import Types
 
 -- Imports
 import Control.Monad.State
+import Control.Monad.Except
 import Data.Maybe
 
 -- generate constraint set and type given a context and expression
-generateConstraints :: (Context, Expression) -> State Int (Type, Constraints)
+generateConstraints :: (Context, Expression)
+	-> StateT Int (Except String) (Type, Constraints)
 
 -- (Cx) if expression is a variable
 generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
-	let finalType = fromJust $ lookup var ctx
-	-- return type
-	return (finalType, [])
+	let varType = lookup var ctx
+	-- check if variable exists in context
+	if isNothing varType
+		-- if not, throw error
+		then throwError $ "Variable " ++ var ++ " does not exist"
+		else do
+			-- retrieve type
+			let finalType = fromJust $ varType
+			-- return type
+			return (finalType, [])
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do

@@ -11,18 +11,22 @@ import ConstraintUnification
 
 -- Imports
 import Control.Monad.State
+import Control.Monad.Except
 
 -- infer the type of the expression
-inferType :: Expression -> Type
-inferType expr =
-	let
-		-- build type assignment from expression and expression
-		typeAssignment = ([], expr)
-		-- generate constraints
-		((typ, constraints), counter) = runState (generateConstraints typeAssignment) 1
-		-- unify constraints and generate substitutions
-		substitutions = unifyConstraints (reverse constraints) counter
-		-- replace unconstrained type variables by type parameters
-		-- discover final type by applying all substitutions to expression type t
-		finalType = insertTypeParameters $ foldr substituteType typ substitutions
-	in finalType
+inferType :: Expression -> Either String Type
+inferType expr = do
+	-- build type assignment from expression and expression
+	let typeAssignment = ([], expr)
+	-- generate constraints
+	cg <- runExcept $ runStateT (generateConstraints typeAssignment) 1
+	-- retrieve constraints
+	let ((typ, constraints), counter) = cg
+	-- unify constraints and generate substitutions
+	cu <- runExcept $ unifyConstraints (reverse constraints) counter
+	-- retrieve substitutions
+	let substitutions = cu
+	-- replace unconstrained type variables by type parameters
+	-- discover final type by applying all substitutions to expression type t
+	let finalType = insertTypeParameters $ foldr substituteType typ substitutions
+	return finalType
