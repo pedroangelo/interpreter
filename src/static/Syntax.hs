@@ -28,6 +28,30 @@ data Expression
 	| GreaterEqualTo Expression Expression
 	deriving (Show, Eq)
 
+-- Expression Mapping
+mapExpression :: (Expression -> Expression) -> Expression -> Expression
+mapExpression f e@(Variable var) = f e
+mapExpression f e@(Abstraction var expr) = f (Abstraction var $ mapExpression f expr)
+mapExpression f e@(Application expr1 expr2) = f (Application (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Ascription expr typ) = f (Ascription (mapExpression f expr) typ)
+mapExpression f e@(Annotation var typ expr) = f (Annotation var typ (mapExpression f expr))
+mapExpression f e@(Int int) = f e
+mapExpression f e@(Bool bool) = f e
+mapExpression f e@(Let var expr1 expr2) = f (Let var (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Fix expr) = f (Fix (mapExpression f expr))
+mapExpression f e@(LetRec var expr1 expr2) = f (LetRec var (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(If expr1 expr2 expr3) = f (If (mapExpression f expr1) (mapExpression f expr2) (mapExpression f expr3))
+mapExpression f e@(Addition expr1 expr2) = f (Addition (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Subtraction expr1 expr2) = f (Subtraction (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Multiplication expr1 expr2) = f (Multiplication (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Division expr1 expr2) = f (Division (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Equal expr1 expr2) = f (Equal (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(NotEqual expr1 expr2) = f (NotEqual (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(LesserThan expr1 expr2) = f (LesserThan (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(GreaterThan expr1 expr2) = f (GreaterThan (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(LesserEqualTo expr1 expr2) = f (LesserEqualTo (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(GreaterEqualTo expr1 expr2) = f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
+
 -- HELPER FUNCTIONS
 
 -- check if it's a variable
@@ -142,6 +166,37 @@ isValue e =
 	isAbstraction e ||
 	isBool e ||
 	isInt e
+
+-- check if is an arithmetic operator
+isArithmeticOperator :: Expression -> Bool
+isArithmeticOperator (Addition _ _) = True
+isArithmeticOperator (Subtraction _ _) = True
+isArithmeticOperator (Multiplication _ _) = True
+isArithmeticOperator (Division _ _) = True
+isArithmeticOperator _ = False
+
+-- check if is a relational operator
+isRelationalOperator :: Expression -> Bool
+isRelationalOperator (Equal _ _) = True
+isRelationalOperator (NotEqual _ _) = True
+isRelationalOperator (LesserThan _ _) = True
+isRelationalOperator (GreaterThan _ _) = True
+isRelationalOperator (LesserEqualTo _ _) = True
+isRelationalOperator (GreaterEqualTo _ _) = True
+isRelationalOperator _ = False
+
+-- get expressions from arithmetic and relational operators
+fromOperator :: Expression -> (Expression, Expression)
+fromOperator (Addition expr1 expr2) = (expr1, expr2)
+fromOperator (Subtraction expr1 expr2) = (expr1, expr2)
+fromOperator (Multiplication expr1 expr2) = (expr1, expr2)
+fromOperator (Division expr1 expr2) = (expr1, expr2)
+fromOperator (Equal expr1 expr2) = (expr1, expr2)
+fromOperator (NotEqual expr1 expr2) = (expr1, expr2)
+fromOperator (LesserThan expr1 expr2) = (expr1, expr2)
+fromOperator (GreaterThan expr1 expr2) = (expr1, expr2)
+fromOperator (LesserEqualTo expr1 expr2) = (expr1, expr2)
+fromOperator (GreaterEqualTo expr1 expr2) = (expr1, expr2)
 
 -- SUBSTITUTIONS
 type ExpressionSubstitution = (String, Expression)

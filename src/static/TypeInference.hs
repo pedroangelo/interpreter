@@ -24,5 +24,5 @@ inferType expr =
 		substitutions = unifyConstraints (reverse constraints) counter
 		-- replace unconstrained type variables by type parameters
 		-- discover final type by applying all substitutions to expression type t
-		finalType = insertTypeParameters $ foldr instantiateTypeVariable typ substitutions
+		finalType = insertTypeParameters $ foldr substituteType typ substitutions
 	in finalType

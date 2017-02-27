@@ -23,6 +23,14 @@ data Constraint
 	= Equality Type Type
 	deriving (Show, Eq)
 
+-- Type Mapping
+mapType :: (Type -> Type) -> Type -> Type
+mapType f t@(VarType var) = f t
+mapType f t@(ParType var) = f t
+mapType f t@(ArrowType t1 t2) = f (ArrowType (mapType f t1) (mapType f t2))
+mapType f t@(IntType) = f t
+mapType f t@(BoolType) = f t
+
 -- HELPER FUNCTIONS
 
 -- build new type variable
@@ -62,25 +70,29 @@ isBoolType _ = False
 type TypeSubstitutions = [TypeSubstitution]
 type TypeSubstitution = (Type, Type)
 
+-- subsitute type
+substituteType :: TypeSubstitution -> Type -> Type
+substituteType s@(old, new) t@(VarType var)
+	| old == t = new
+	| otherwise = t
+substituteType s@(old, new) t@(ParType par)
+	| old == t = new
+	| otherwise = t
+substituteType s@(old, new) t@(ArrowType t1 t2) =
+	ArrowType (substituteType s t1) (substituteType s t2)
+substituteType s@(old, new) t@(IntType) = t
+substituteType s@(old, new) t@(BoolType) = t
+
 -- apply substitution to constraints
 substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
-substituteConstraint s (Equality t1 t2) = Equality (instantiateTypeVariable s t1) (instantiateTypeVariable s t2)
-
--- instantiate a type variable with a type
-instantiateTypeVariable :: TypeSubstitution -> Type -> Type
-instantiateTypeVariable (s1, s2) (VarType t)
-	| s1 == (VarType t) = s2
-	| otherwise = (VarType t)
-instantiateTypeVariable (s1, s2) (ParType t) = ParType t
-instantiateTypeVariable (s1, s2) (ArrowType t1 t2) =
-	ArrowType (instantiateTypeVariable (s1, s2) t1) (instantiateTypeVariable (s1, s2) t2)
-instantiateTypeVariable (s1, s2) IntType = IntType
-instantiateTypeVariable (s1, s2) BoolType = BoolType
+substituteConstraint s (Equality t1 t2) =
+	Equality (substituteType s t1) (substituteType s t2)
 
 -- transform unconstrained type variables into type parameters
 insertTypeParameters :: Type -> Type
-insertTypeParameters (VarType t) = ParType $ map toUpper t
-insertTypeParameters (ParType t) = ParType t
-insertTypeParameters (ArrowType t1 t2) = ArrowType (insertTypeParameters t1) (insertTypeParameters t2)
-insertTypeParameters IntType = IntType
-insertTypeParameters BoolType = BoolType
+insertTypeParameters = mapType insertTypeParameters'
+
+-- transform unconstrained type variable into type parameter
+insertTypeParameters' :: Type -> Type
+insertTypeParameters' (VarType t) = ParType $ map toUpper t
+insertTypeParameters' t = t
