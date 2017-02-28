@@ -147,7 +147,7 @@ insertTypeParameters' :: Type -> Type
 insertTypeParameters' (VarType t) = ParType $ map toUpper t
 insertTypeParameters' t = t
 
--- Bound type variables with ForAll quantifiers
+-- Bind type variables with ForAll quantifiers
 generalizeTypeVariables :: Type -> Type
 generalizeTypeVariables t =
 	let

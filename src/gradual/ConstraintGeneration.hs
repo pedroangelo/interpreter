@@ -111,9 +111,9 @@ generateConstraints (ctx, Bool bool) = do
 	return (BoolType, [], typedExpr)
 
 -- (Clet) if expression is a let binding
-generateConstraints (ctx, Let var expr1 expr2) = do
+generateConstraints (ctx, Let var expr1 expr2)
 	-- (Cletp) if expression is a let binding a value to a variable
-	-- | isValue expr1 = do
+	| isValue expr1 || isAnnotation expr1 = do
 		-- build type assignment for value
 		let typeAssignment1 = (ctx, expr1)
 		-- obtain type and generate constraints for type assignment
@@ -129,26 +129,25 @@ generateConstraints (ctx, Let var expr1 expr2) = do
 		-- return type along with all the constraints
 		return (t2, constraints1 ++ constraints2, typedExpr)
 	-- (Clet) if expression is a let binding a expression to a variable
-{-	| otherwise = do
+	| otherwise = do
 		-- build type assignment for value
-		let typeAssignment1 = (ctx, expr1)
+		--let typeAssignment1 = (ctx, expr1)
 		-- obtain type and generate constraints for type assignment
-		(t1, _, expr1_typed) <- generateConstraints typeAssignment1
+		--(t1, _, expr1_typed) <- generateConstraints typeAssignment1
 		-- generalize type variables
-		let t1' = generalizeTypeVariables t1
+		--let t1' = generalizeTypeVariables t1
 		-- build type assignment for value
-		let typeAssignment2 = ((var, t1') : ctx, expr2)
+		--let typeAssignment2 = ((var, t1') : ctx, expr2)
 		-- obtain type and generate constraints for type assignment
-		(_, _, expr2_typed) <- generateConstraints typeAssignment2
+		--(_, _, expr2_typed) <- generateConstraints typeAssignment2
 		-- build type assignment for expression
-		let typeAssignment = (ctx, Application (Abstraction var expr2) (expr1))
+		let typeAssignment = (ctx, Application (Abstraction var expr2) expr1)
 		-- obtain type and generate constraints for type assignment
 		(t, constraints, expr_typed) <- generateConstraints typeAssignment
 		-- build typed expression
-		let typedExpr = TypeInformation t (Let var expr1_typed expr2_typed)
+		--let typedExpr = TypeInformation t (Let var expr1_typed expr2_typed)
 		-- return type along with all the constraints
-		return (t, constraints, typedExpr)
--}
+		return (t, constraints, expr_typed)
 
 -- (Cfix) if expression is a fixed point
 generateConstraints (ctx, Fix expr) = do
@@ -171,16 +170,20 @@ generateConstraints (ctx, LetRec var expr1 expr2) = do
 	-- build type assignment
 	let typeAssignment = (ctx, Let var (Fix $ Abstraction var expr1) expr2)
 	-- obtain type and generate constraints for type assignment
-	(t, constraints, _) <- generateConstraints typeAssignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
 	-- build type assignment
-	let typeAssignment1 = (ctx, expr1)
-	let typeAssignment2 = (ctx, expr2)
+	--let typeAssignment1 = (ctx, expr1)
 	-- obtain type and generate constraints for type assignment
-	(_, _, expr1_typed) <- generateConstraints typeAssignment
-	(_, _, expr2_typed) <- generateConstraints typeAssignment
+	--(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	-- generalize type variables
+	--let t1' = generalizeTypeVariables t1
+	-- build type assignment
+	--let typeAssignment2 = ((var, t1') : ctx, expr2)
+	-- obtain type and generate constraints for type assignment
+	--(_, constraints2, expr2_typed) <- generateConstraints typeAssignment2
 	-- build typed expression
-	let typedExpr = TypeInformation t (LetRec var expr1_typed expr2_typed)
-	return (t, constraints, typedExpr)
+	--let typedExpr = TypeInformation t (LetRec var expr1_typed expr2_typed)
+	return (t, constraints, expr_typed)
 
 -- (Cif) if expression if a conditional statement
 generateConstraints (ctx, If expr1 expr2 expr3) = do

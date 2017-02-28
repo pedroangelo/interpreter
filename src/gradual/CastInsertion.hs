@@ -65,7 +65,7 @@ insertCasts e@(TypeInformation typ (Fix expr)) =
 		ArrowType d _ = p
 		-- build casts
 		cast = Cast t (ArrowType d d) expr'
-	in TypeInformation t $ Fix cast
+	in TypeInformation d $ Fix cast
 
 -- if expression is a recursive let binding
 insertCasts e@(TypeInformation typ (LetRec var expr1 expr2)) =

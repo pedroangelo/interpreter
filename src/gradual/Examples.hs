@@ -134,6 +134,8 @@ plus = Abstraction "n1" $ Abstraction "n2" $ Addition (Variable "n1") (Variable 
 -- (λx . if (x == 0) then True else False) : Int -> Bool
 isZero = Abstraction "x" $ If (Equal (Variable "x") (Int 0)) (Bool True) (Bool False)
 
+-- Examples to test gradual type parameters
+
 -- (λx:? . (λy . y) x) : ? -> ?
 parameters_1 = Annotation "x" DynType
 	(Application
@@ -187,3 +189,43 @@ parameters_6_err_1 = Application
 parameters_6_err_2 = Application
 	(Annotation "x" DynType $ If (Variable "x") (Int 1) (Bool True))
 	parameters_2
+
+-- Examples of useful functions
+
+factorial_func n = Application factorial (Int n)
+factorial = LetRec "fact" (Abstraction "n" $ If (Equal (Variable "n") (Int 0)) (Int 1) (Multiplication (Variable "n") (Application (Variable "fact") (Subtraction (Variable "n") (Int 1))))) (Variable "fact")
+
+power_func n p = Application (Application power (Int n)) (Int p)
+power = LetRec "power" (Abstraction "n" $ Abstraction "p" $ If (Equal (Variable "p") (Int 0)) (Int 1) (Multiplication (Variable "n") (Application (Application (Variable "power") (Variable "n")) (Subtraction (Variable "p") (Int 1))))) (Variable "power")
+
+moddiv_func m n = Application (Application moddiv (Int m)) (Int n)
+moddiv = Abstraction "m" $ Abstraction "n" $ Let "quotient" (Division (Variable "m") (Variable "n")) (Subtraction (Variable "m") (Multiplication (Variable "n") (Variable "quotient")))
+
+not_func b = Application not' (Bool b)
+not' = Abstraction "b" $ If (Variable "b") (Bool False) (Bool True)
+
+gcd_func a b = Application (Application gcd' (Int a)) (Int b)
+gcd' = LetRec "gcd" (Abstraction "a" $ Abstraction "b" $ If (Equal (Variable "b") (Int 0)) (Variable "a") (Application (Application (Variable "gcd") (Variable "b")) (Application (Application moddiv (Variable "a")) (Variable "b")))) (Variable "gcd")
+
+-- Examples to test let and letrec
+
+letrec_1 = LetRec "ten"
+	(Abstraction "x" $
+		If (Equal (Variable "x") (Int 10))
+			(Int 0)
+			(Addition
+				(Int 1)
+				(Application
+					(Variable "ten")
+					(Addition
+						(Int 1)
+						(Variable "x")))))
+	(Variable "ten")
+
+let_1 = Let "let"
+	(Application
+		lambda_I
+		(Annotation "x" IntType $ Variable "x"))
+	(Application
+		(Variable "let")
+		(Ascription (Bool True) DynType))

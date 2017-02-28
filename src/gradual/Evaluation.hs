@@ -18,6 +18,9 @@ evaluate e@(Abstraction _ _) = e
 
 -- if expression is an application
 evaluate e@(Application expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -26,9 +29,6 @@ evaluate e@(Application expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ Application expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- C-BETA - simulate casts on data types
 	| isCast expr1 =
 		let
@@ -86,7 +86,7 @@ evaluate e@(Fix expr)
 	-- substitute abstraction variable with e in expr
 	| isAbstraction expr =
 		let (Abstraction var expr') = expr
-		in substitute (var, e) expr'
+		in evaluate $ substitute (var, e) expr'
 
 -- if expression is a recursive let binding
 evaluate e@(LetRec var expr1 expr2) =
@@ -110,6 +110,9 @@ evaluate e@(If expr1 expr2 expr3)
 
 -- if expression is a addition
 evaluate e@(Addition expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -118,9 +121,6 @@ evaluate e@(Addition expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ Addition expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native addition function between expr1 and expr2
 	| otherwise =
 		let
@@ -130,6 +130,9 @@ evaluate e@(Addition expr1 expr2)
 
 -- if expression is a subtraction
 evaluate e@(Subtraction expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -138,9 +141,6 @@ evaluate e@(Subtraction expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ Subtraction expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native subtraction function between expr1 and expr2
 	| otherwise =
 		let
@@ -150,6 +150,9 @@ evaluate e@(Subtraction expr1 expr2)
 
 -- if expression is a multiplication
 evaluate e@(Multiplication expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -158,9 +161,6 @@ evaluate e@(Multiplication expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ Multiplication expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native multiplication function between expr1 and expr2
 	| otherwise =
 		let
@@ -170,6 +170,9 @@ evaluate e@(Multiplication expr1 expr2)
 
 -- if expression is a division
 evaluate e@(Division expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -178,9 +181,6 @@ evaluate e@(Division expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ Division expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native division function between expr1 and expr2
 	| otherwise =
 		let
@@ -190,6 +190,9 @@ evaluate e@(Division expr1 expr2)
 
 -- if expression is a equality check
 evaluate e@(Equal expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -198,9 +201,6 @@ evaluate e@(Equal expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ Equal expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native equality check between expr1 and expr2
 	| otherwise =
 		let
@@ -210,6 +210,9 @@ evaluate e@(Equal expr1 expr2)
 
 -- if expression is a non equality check
 evaluate e@(NotEqual expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -218,9 +221,6 @@ evaluate e@(NotEqual expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ NotEqual expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native non equality check between expr1 and expr2
 	| otherwise =
 		let
@@ -230,6 +230,9 @@ evaluate e@(NotEqual expr1 expr2)
 
 -- if expression is a lesser than check
 evaluate e@(LesserThan expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -238,9 +241,6 @@ evaluate e@(LesserThan expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ LesserThan expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native lesser than check between expr1 and expr2
 	| otherwise =
 		let
@@ -250,6 +250,9 @@ evaluate e@(LesserThan expr1 expr2)
 
 -- if expression is a greater than check
 evaluate e@(GreaterThan expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -258,9 +261,6 @@ evaluate e@(GreaterThan expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ GreaterThan expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native greater than check between expr1 and expr2
 	| otherwise =
 		let
@@ -270,6 +270,9 @@ evaluate e@(GreaterThan expr1 expr2)
 
 -- if expression is a lesser than or equal to check
 evaluate e@(LesserEqualTo expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -278,9 +281,6 @@ evaluate e@(LesserEqualTo expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ LesserEqualTo expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native lesser than or equal to check between expr1 and expr2
 	| otherwise =
 		let
@@ -290,6 +290,9 @@ evaluate e@(LesserEqualTo expr1 expr2)
 
 -- if expression is a greater than or equal to check
 evaluate e@(GreaterEqualTo expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -298,9 +301,6 @@ evaluate e@(GreaterEqualTo expr1 expr2)
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
 		in evaluate $ GreaterEqualTo expr1 v2
-	-- push blames to top level
-	| isBlame expr1 = expr1
-	| isBlame expr2 = expr2
 	-- call native greater than or equal to check between expr1 and expr2
 	| otherwise =
 		let
