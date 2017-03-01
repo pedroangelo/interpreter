@@ -26,6 +26,20 @@ unifyConstraints ((Equality t1 t2) : cs) counter
 		let (ArrowType t21 t22) = t2
 		let constraints = [Equality t12 t22, Equality t11 t21]
 		unifyConstraints (constraints ++ cs) counter
+	-- U ((t11 × t12 =C t21 × t22) : cs)
+	-- => U ((t12 =C t22, t11 =C t21) : cs)
+	| isProductType t1 && isProductType t2 = do
+		let (ProductType t11 t12) = t1
+		let (ProductType t21 t22) = t2
+		let constraints = [Equality t12 t22, Equality t11 t21]
+		unifyConstraints (constraints ++ cs) counter
+	-- U ((t11 + t12 =C t21 + t22) : cs)
+	-- => U ((t12 =C t22, t11 =C t21) : cs)
+	| isSumType t1 && isSumType t2 = do
+		let (SumType t11 t12) = t1
+		let (SumType t21 t22) = t2
+		let constraints = [Equality t12 t22, Equality t11 t21]
+		unifyConstraints (constraints ++ cs) counter
 	-- U ((t1 =C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 =C t1) : cs)
 	| (not $ isVarType t1) && isVarType t2 = do

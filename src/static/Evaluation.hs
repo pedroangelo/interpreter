@@ -68,7 +68,7 @@ evaluate e@(Fix expr)
 	-- substitute abstraction variable with e in expr
 	| isAbstraction expr =
 		let (Abstraction var expr') = expr
-		in substitute (var, e) expr'
+		in evaluate $ substitute (var, e) expr'
 
 -- if expression is a recursive let binding
 evaluate e@(LetRec var expr1 expr2) =
@@ -255,3 +255,71 @@ evaluate e@(GreaterEqualTo expr1 expr2)
 			Int i1 = expr1
 			Int i2 = expr2
 		in Bool (i1 >= i2)
+
+-- if expression is an unit
+evaluate e@(Unit) = e
+
+-- if expression is a pair
+evaluate e@(Pair expr1 expr2)
+	-- reduce expr1
+	| not $ isValue expr1 =
+		let v1 = evaluate expr1
+		in evaluate $ Pair v1 expr2
+	-- reduce expr2
+	| not $ isValue expr2 =
+		let v2 = evaluate expr2
+		in evaluate $ Pair expr1 v2
+	| otherwise = e
+
+-- if expression is a first projection
+evaluate e@(First expr)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ First v
+	-- project first element of pair
+	| isPair expr =
+		let (Pair expr1 expr2) = expr
+		in evaluate $ expr1
+
+-- if expression is a second projection
+evaluate e@(Second expr)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ First v
+	-- project first element of pair
+	| isPair expr =
+		let (Pair expr1 expr2) = expr
+			in evaluate $ expr2
+
+-- if expression is a case
+evaluate e@(Case expr (var1, expr1) (var2, expr2))
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ Case v (var1, expr1) (var2, expr2)
+	-- if is left tag
+	| isLeftTag expr =
+		let (LeftTag exprl typ) = expr
+		in evaluate $ substitute (var1, exprl) expr1
+	-- if is right tag
+	| isRightTag expr =
+		let (RightTag exprr typ) = expr
+		in evaluate $ substitute (var2, exprr) expr2
+
+-- if expression is a right tag
+evaluate e@(LeftTag expr typ)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in LeftTag v typ
+	| otherwise = e
+
+-- if expression is a right tag
+evaluate e@(RightTag expr typ)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in RightTag v typ
+	| otherwise = e

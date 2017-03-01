@@ -5,29 +5,43 @@ import Types
 
 -- Expressions in λ-calculus and extensions
 data Expression
+	-- pure λ-calculus terms
 	= Variable String
 	| Abstraction String Expression
 	| Application Expression Expression
+	-- Ascribed terms
 	| Ascription Expression Type
+	-- Annotated Abstraction
 	| Annotation String Type Expression
+	-- Integers
 	| Int Int
+	-- Booleans
 	| Bool Bool
+	-- Let bindings
 	| Let String Expression Expression
+	-- Fixed point
 	| Fix Expression
+	-- Recursive let binding
 	| LetRec String Expression Expression
+	-- Conditional statement
 	| If Expression Expression Expression
+	-- Arithmetic Operators
 	| Addition Expression Expression
 	| Subtraction Expression Expression
 	| Multiplication Expression Expression
 	| Division Expression Expression
+	-- Relational Operators
 	| Equal Expression Expression
 	| NotEqual Expression Expression
 	| LesserThan Expression Expression
 	| GreaterThan Expression Expression
 	| LesserEqualTo Expression Expression
 	| GreaterEqualTo Expression Expression
+	-- Type Annotations
 	| TypeInformation Type Expression
+	-- Casts
 	| Cast Type Type Expression
+	-- Blames
 	| Blame Type String
 	deriving (Show, Eq)
 

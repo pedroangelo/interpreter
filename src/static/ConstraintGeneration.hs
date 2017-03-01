@@ -57,8 +57,7 @@ generateConstraints (ctx, Application expr1 expr2) = do
 	put (i+1)
 	-- create new type variable
 	let newVar = newTypeVar i
-	-- build for each expression in the application
-	-- a type assignment
+	-- build for each expression in the application a type assignment
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
@@ -100,7 +99,7 @@ generateConstraints (ctx, Bool bool) = do
 -- if expression is a let binding
 generateConstraints (ctx, Let var expr1 expr2)
 	-- (Cletp) if expression is a let binding a value to a variable
- 	| isValue expr1 = do
+ 	| isValue expr1 || isAnnotation expr1 = do
 		-- build type assignment for value
 		let typeAssignment1 = (ctx, expr1)
 		-- obtain type and generate constraints for type assignment
@@ -148,8 +147,7 @@ generateConstraints (ctx, LetRec var expr1 expr2) = do
 
 -- (Cif) if expression if a conditional statement
 generateConstraints (ctx, If expr1 expr2 expr3) = do
-	-- build for each expression in the application
-	-- a type assignment
+	-- build for each expression in the application a type assignment
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	let typeAssignment3 = (ctx, expr3)
@@ -188,6 +186,105 @@ generateConstraints (ctx, expr)
 			[Equality t1 IntType, Equality t2 IntType])
 	-- retrieve sub expressions from the operator
 	where (expr1, expr2) = fromOperator expr
+
+-- (Cunit) if expression is an unit
+generateConstraints (ctx, Unit) = do
+	-- return type along with all the constraints
+	return (UnitType, [])
+
+-- (Cpair) if expression is a pair
+generateConstraints (ctx, Pair expr1 expr2) = do
+	-- build for each expression in the application a type assignment
+	let typeAssignment1 = (ctx, expr1)
+	let typeAssignment2 = (ctx, expr2)
+	-- obtain type and constraints for both expressions
+	(t1, constraints1) <- generateConstraints typeAssignment1
+	(t2, constraints2) <- generateConstraints typeAssignment2
+	-- return type along with all the constraints
+	return (ProductType t1 t2, constraints1 ++ constraints2)
+
+-- (Cfst) if expression is a first projection
+generateConstraints (ctx, First expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+2)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	let newVar2 = newTypeVar (i+1)
+	-- build type assignment
+	let typeAssignment1 = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment1
+	-- return type along with all the constraints
+	return (newVar1, constraints ++ [Equality t (ProductType newVar1 newVar2)])
+
+-- (Csnd) if expression is a second projection
+generateConstraints (ctx, Second expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+2)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	let newVar2 = newTypeVar (i+1)
+	-- build type assignment
+	let typeAssignment1 = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment1
+	-- return type along with all the constraints
+	return (newVar2, constraints ++ [Equality t (ProductType newVar1 newVar2)])
+
+-- (Ccase) if expression is a case
+generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do
+	-- counter for variable creation
+	i <- get
+	put (i+3)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	let newVar2 = newTypeVar (i+1)
+	let newVar3 = newTypeVar (i+2)
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- build for each expression in the application a type assignment
+	let typeAssignment1 = ((var1, newVar1) : ctx, expr1)
+	let typeAssignment2 = ((var2, newVar2) : ctx, expr2)
+	-- obtain type and constraints for both expressions
+	(t1, constraints1) <- generateConstraints typeAssignment1
+	(t2, constraints2) <- generateConstraints typeAssignment2
+	-- return type along with all the constraints
+	return (t1, constraints ++ constraints1 ++ constraints2 ++
+		[Equality t (SumType newVar1 newVar2), Equality t1 t2])
+
+-- (Cinl) if expression is a left tag
+generateConstraints (ctx, LeftTag expr typ) = do
+	-- counter for variable creation
+	i <- get
+	put (i+2)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	let newVar2 = newTypeVar (i+1)
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- return type along with all the constraints
+	return (typ, constraints ++	[Equality typ (SumType newVar1 newVar2), Equality t newVar1])
+
+-- (Cinr) if expression is a right tag
+generateConstraints (ctx, RightTag expr typ) = do
+	-- counter for variable creation
+	i <- get
+	put (i+2)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	let newVar2 = newTypeVar (i+1)
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- return type along with all the constraints
+	return (typ, constraints ++	[Equality typ (SumType newVar1 newVar2), Equality t newVar2])
 
 -- Replace type parameters with type variables
 replaceQuantifiedVariables :: Type -> State Int Type
