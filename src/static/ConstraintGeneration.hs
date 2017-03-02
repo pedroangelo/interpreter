@@ -286,6 +286,40 @@ generateConstraints (ctx, RightTag expr typ) = do
 	-- return type along with all the constraints
 	return (typ, constraints ++	[Equality typ (SumType newVar1 newVar2), Equality t newVar2])
 
+-- (Cfold) if expression is a fold
+generateConstraints (ctx, Fold typ expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- fold type
+	let (Mu var typ') = typ
+	let t' = foldType (var, typ) typ'
+	-- return type along with all the constraints
+	return (typ, constraints ++	[Equality t' t])
+
+-- (Cfold) if expression is a fold
+generateConstraints (ctx, Unfold typ expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- fold type
+	let (Mu var typ') = typ
+	let t' = foldType (var, typ) typ'
+	-- return type along with all the constraints
+	return (t', constraints ++	[Equality typ t])
+
 -- Replace type parameters with type variables
 replaceQuantifiedVariables :: Type -> State Int Type
 replaceQuantifiedVariables (ForAll var typ) = do

@@ -323,3 +323,22 @@ evaluate e@(RightTag expr typ)
 		let v = evaluate expr
 		in RightTag v typ
 	| otherwise = e
+
+-- if expression is a fold
+evaluate e@(Fold typ expr)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in Fold typ v
+	| otherwise = e
+
+-- if expression is a fold
+evaluate e@(Unfold typ expr)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in Unfold typ v
+	-- if expression is an unfold of a fold
+	| isFold expr =
+		let (Fold _ expr') = expr
+		in expr'

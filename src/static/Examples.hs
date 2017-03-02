@@ -26,3 +26,29 @@ not' = Abstraction "b" $ If (Variable "b") (Bool False) (Bool True)
 
 gcd_func a b = Application (Application gcd' (Int a)) (Int b)
 gcd' = LetRec "gcd" (Abstraction "a" $ Abstraction "b" $ If (Equal (Variable "b") (Int 0)) (Variable "a") (Application (Application (Variable "gcd") (Variable "b")) (Application (Application moddiv (Variable "a")) (Variable "b")))) (Variable "gcd")
+
+-- Recursive Types
+
+-- List of Int
+intList = Mu "L" $ SumType (UnitType) (ProductType IntType (VarType "L"))
+intList' = SumType UnitType (ProductType IntType (Mu "L" (SumType UnitType (ProductType IntType (VarType "L")))))
+
+nil = Fold intList $ LeftTag Unit intList'
+
+cons = Abstraction "n" $ Abstraction "l" $ Fold intList $ RightTag (Pair (Variable "n") (Variable "l")) intList'
+
+isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", Bool True) ("x", Bool False)
+
+hd = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", (Int (-1))) ("x", First $ Variable "x")
+
+tl = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", nil) ("x", Second $ Variable "x")
+
+list1 = Application (Application cons (Int 1)) nil
+
+list2 = Application (Application cons (Int 2)) list1
+
+sumlist = Fix $ Abstraction "s" $ Abstraction "l" $ If (Application (isnil) (Variable "l")) (Int 0) (Addition (Application (hd) (Variable "l")) (Application (Variable "s") (Application (tl) (Variable "l"))))
+
+mapInt = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $ If (Application isnil (Variable "l")) nil (Application (Application (cons) (Application (Variable "f") (Application (hd) (Variable "l")))) (Application (Application (Variable "m") (Variable "f")) (Application (tl) (Variable "l"))))
+
+map_func f l =  Application (Application (mapInt) f) l

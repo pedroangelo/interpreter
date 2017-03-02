@@ -47,6 +47,9 @@ data Expression
 	| Case Expression (String, Expression) (String, Expression)
 	| LeftTag Expression Type
 	| RightTag Expression Type
+	-- Recursive Types
+	| Fold Type Expression
+	| Unfold Type Expression
 	deriving (Show, Eq)
 
 -- Expression Mapping
@@ -79,6 +82,9 @@ mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
+mapExpression f e@(Fold typ expr) = f (Fold typ (mapExpression f expr))
+mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
+
 
 -- HELPER FUNCTIONS
 
@@ -222,6 +228,16 @@ isRightTag :: Expression -> Bool
 isRightTag (RightTag _ _) = True
 isRightTag _ = False
 
+-- check if is a fold
+isFold :: Expression -> Bool
+isFold (Fold _ _) = True
+isFold _ = False
+
+-- check if is an unfold
+isUnfold :: Expression -> Bool
+isUnfold (Unfold _ _) = True
+isUnfold _ = False
+
 -- check if is a value
 isValue :: Expression -> Bool
 isValue e =
@@ -231,7 +247,8 @@ isValue e =
 	isInt e ||
 	isUnit e ||
 	(isPair e && isValuePair e) ||
-	((isLeftTag e || isRightTag e) && isValueSums e)
+	((isLeftTag e || isRightTag e) && isValueSums e) ||
+	isFold e
 
 -- check if pair is a value
 isValuePair :: Expression -> Bool
@@ -379,6 +396,13 @@ substitute s@(old, new) e@(LeftTag expr typ) =
 	LeftTag (substitute s expr) typ
 substitute s@(old, new) e@(RightTag expr typ) =
 	RightTag (substitute s expr) typ
+
+-- if the expression is a fold or unfold
+substitute s@(old, new) e@(Fold typ expr) =
+	Fold typ (substitute s expr)
+substitute s@(old, new) e@(Unfold typ expr) =
+	Unfold typ (substitute s expr)
+
 
 -- substitution for case expressions
 substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Expression)
