@@ -37,6 +37,16 @@ data Expression
 	| GreaterThan Expression Expression
 	| LesserEqualTo Expression Expression
 	| GreaterEqualTo Expression Expression
+	-- Unit
+	| Unit
+	-- Pairs
+	| Pair Expression Expression
+	| First Expression
+	| Second Expression
+	-- Sums
+	| Case Expression (String, Expression) (String, Expression)
+	| LeftTag Expression Type
+	| RightTag Expression Type
 	-- Type Annotations
 	| TypeInformation Type Expression
 	-- Casts
@@ -68,6 +78,13 @@ mapExpression f e@(LesserThan expr1 expr2) = f (LesserThan (mapExpression f expr
 mapExpression f e@(GreaterThan expr1 expr2) = f (GreaterThan (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(LesserEqualTo expr1 expr2) = f (LesserEqualTo (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(GreaterEqualTo expr1 expr2) = f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(Unit) = f e
+mapExpression f e@(Pair expr1 expr2) = f (Pair (mapExpression f expr1) (mapExpression f expr2))
+mapExpression f e@(First expr) = f (First (mapExpression f expr))
+mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
+mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
+mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
+mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
 mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
 mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
 mapExpression f e@(Blame typ label) = f e
@@ -179,6 +196,41 @@ isGreaterEqualTo :: Expression -> Bool
 isGreaterEqualTo (GreaterEqualTo _ _) = True
 isGreaterEqualTo _ = False
 
+-- check if it an unit
+isUnit :: Expression -> Bool
+isUnit Unit = True
+isUnit _ = False
+
+-- check if is a pair
+isPair :: Expression -> Bool
+isPair (Pair _ _) = True
+isPair _ = False
+
+-- check if is a first projection
+isFirst :: Expression -> Bool
+isFirst (First _) = True
+isFirst _ = False
+
+-- check if is a second projection
+isSecond :: Expression -> Bool
+isSecond (Second _) = True
+isSecond _ = False
+
+-- check if is a case
+isCase :: Expression -> Bool
+isCase (Case _ _ _) = True
+isCase _ = False
+
+-- check if is a left tag
+isLeftTag :: Expression -> Bool
+isLeftTag (LeftTag _ _) = True
+isLeftTag _ = False
+
+-- check if is a second projection
+isRightTag :: Expression -> Bool
+isRightTag (RightTag _ _) = True
+isRightTag _ = False
+
 -- check if is a type information
 isTypeInformation :: Expression -> Bool
 isTypeInformation (TypeInformation _ _) = True
@@ -201,14 +253,30 @@ isValue e =
 	isAbstraction e ||
 	isBool e ||
 	isInt e ||
+	isUnit e ||
+	(isPair e && isValuePair e) ||
+	((isLeftTag e || isRightTag e) && isValueSums e) ||
 	isValueCast e ||
 	isBlame e
+
+-- check if pair is a value
+isValuePair :: Expression -> Bool
+isValuePair (Pair expr1 expr2) = isValue expr1 && isValue expr2
+isValuePair _ = False
+
+-- check if sums is a value
+isValueSums :: Expression -> Bool
+isValueSums (LeftTag expr typ) = isValue expr
+isValueSums (RightTag expr typ) = isValue expr
+isValueSums _ = False
 
 -- check if cast is a value
 isValueCast :: Expression -> Bool
 isValueCast (Cast t1 t2 e) =
 	(isGroundType t1 && isDynType t2 && isValue e) ||
 	(isArrowType t1 && isArrowType t2 && isValue e && t1 /= t2) ||
+	(isProductType t1 && isProductType t2 && isValue e && t1 /= t2) ||
+	(isSumType t1 && isSumType t2 && isValue e && t1 /= t2) ||
 	(isForAllType t1 && isForAllType t2 && t1 /= t2 && isValue e)
 isValueCast _ = False
 
@@ -353,6 +421,25 @@ substitute s@(old, new) e@(LesserEqualTo expr1 expr2) =
 substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
 	GreaterEqualTo (substitute s expr1) (substitute s expr2)
 
+-- if expression is an unit
+substitute s@(old, new) e@(Unit) = e
+
+-- if the expression is a pair or a projection
+substitute s@(old, new) e@(Pair expr1 expr2) =
+	Pair (substitute s expr1) (substitute s expr2)
+substitute s@(old, new) e@(First expr) =
+	First (substitute s expr)
+substitute s@(old, new) e@(Second expr) =
+	Second (substitute s expr)
+
+-- if the expression is a case or tag
+substitute s@(old, new) e@(Case expr e1@(var1, expr1) e2@(var2, expr2)) =
+	Case (substitute s expr) (substituteCase s e1) (substituteCase s e2)
+substitute s@(old, new) e@(LeftTag expr typ) =
+	LeftTag (substitute s expr) typ
+substitute s@(old, new) e@(RightTag expr typ) =
+	RightTag (substitute s expr) typ
+
 -- if expression is a type information, propagate substitutions
 substitute s@(old, new) e@(TypeInformation typ expr) =
 	TypeInformation typ $ substitute s expr
@@ -363,3 +450,9 @@ substitute s@(old, new) e@(Cast t1 t2 expr) =
 
 -- if expression is a blame, don't propagate substitutions
 substitute s@(old, new) e@(Blame t1 label) = e
+
+-- substitution for case expressions
+substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Expression)
+substituteCase s@(old, new) e@(var, expr)
+	| old == var = e
+	| otherwise = (var, substitute s expr)

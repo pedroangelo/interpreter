@@ -143,10 +143,88 @@ insertCasts e@(TypeInformation typ expr)
 	-- retrieve sub expressions from the operator
 	where (expr1, expr2) = fromOperator expr
 
--- obtain pattern match type
+-- if expression is an unit
+insertCasts e@(TypeInformation typ Unit) =
+	TypeInformation typ Unit
+
+-- if expression is a pair
+insertCasts e@(TypeInformation typ (Pair expr1 expr2)) =
+	let
+		-- insert casts
+		expr1' = insertCasts expr1
+		expr2' = insertCasts expr2
+		-- build types
+		TypeInformation t1 _ = expr1'
+		TypeInformation t2 _ = expr2'
+	in TypeInformation (ProductType t1 t2) $ Pair expr1' expr2'
+
+-- if expression is a first projection
+insertCasts e@(TypeInformation typ (First expr)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- buid types
+		TypeInformation pm _ = expr'
+		pm' = patternMatchProduct pm
+		ProductType t1 t2 = pm'
+		-- build casts
+		cast = Cast pm pm' expr'
+	in TypeInformation t1 $ First cast
+
+-- if expression is a second projection
+insertCasts e@(TypeInformation typ (Second expr)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- buid types
+		TypeInformation pm _ = expr'
+		pm' = patternMatchProduct pm
+		ProductType t1 t2 = pm'
+		-- build casts
+		cast = Cast pm pm' expr'
+	in TypeInformation t2 $ Second cast
+
+-- if expression is a case
+insertCasts e@(TypeInformation typ (Case expr (var1, expr1) (var2, expr2))) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		expr1' = insertCasts expr1
+		expr2' = insertCasts expr2
+		-- build types
+		TypeInformation pm _ = expr'
+		TypeInformation t1 _ = expr1'
+		TypeInformation t2 _ = expr2'
+		pm' = patternMatchSum pm
+		SumType pm1 pm2 = pm'
+		j = joinType t1 t2
+		cast = Cast pm pm' expr'
+		cast1 = Cast t1 j expr1'
+		cast2 = Cast t2 j expr2'
+	in TypeInformation j $ Case cast (var1, cast1) (var2, cast2)
+
+-- if expression is a left tag
+insertCasts e@(TypeInformation typ (LeftTag expr t)) =
+	TypeInformation t $ LeftTag (insertCasts expr) t
+
+-- if expression is a left tag
+insertCasts e@(TypeInformation typ (RightTag expr t)) =
+	TypeInformation t $ RightTag (insertCasts expr) t
+
+-- obtain pattern match type for arrow
 patternMatchArrow :: Type -> Type
 patternMatchArrow e@(ArrowType type1 type2) = e
 patternMatchArrow e@(DynType) = ArrowType DynType DynType
+
+-- obtain pattern match type for product
+patternMatchProduct :: Type -> Type
+patternMatchProduct e@(ProductType type1 type2) = e
+patternMatchProduct e@(DynType) = ProductType DynType DynType
+
+-- obtain pattern match type for sum
+patternMatchSum :: Type -> Type
+patternMatchSum e@(SumType type1 type2) = e
+patternMatchSum e@(DynType) = SumType DynType DynType
 
 -- obtain join of types
 joinType :: Type -> Type -> Type
@@ -155,6 +233,17 @@ joinType (ArrowType t11 t12) (ArrowType t21 t22) =
 		t1 = joinType t11 t21
 		t2 = joinType t12 t22
 	in ArrowType t1 t2
+joinType (ProductType t11 t12) (ProductType t21 t22) =
+	let
+		t1 = joinType t11 t21
+		t2 = joinType t12 t22
+	in ProductType t1 t2
+joinType (SumType t11 t12) (SumType t21 t22) =
+	let
+		t1 = joinType t11 t21
+		t2 = joinType t12 t22
+	in SumType t1 t2
 joinType t1 t2
-	| not (isArrowType t1) && not (isArrowType t2) =
+	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1)) &&
+	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2)) =
 		if (isDynType t1) then t2 else t1

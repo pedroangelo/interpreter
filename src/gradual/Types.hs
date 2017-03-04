@@ -17,6 +17,9 @@ data Type
 	| BoolType
 	| DynType
 	| ForAll String Type
+	| UnitType
+	| ProductType Type Type
+	| SumType Type Type
 	deriving (Show, Eq)
 
 -- Constraints
@@ -35,10 +38,25 @@ mapType f t@(IntType) = f t
 mapType f t@(BoolType) = f t
 mapType f t@(DynType) = f t
 mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
+mapType f t@(UnitType) = f t
+mapType f t@(ProductType t1 t2) = f (ProductType (mapType f t1) (mapType f t2))
+mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
 
 -- given a test function, collect all types that suceed in the test
 retrieveType :: (Type -> Bool) -> Type -> [Type]
 retrieveType f t@(ArrowType t1 t2) =
+	let
+		t1' = retrieveType f t1
+		t2' = retrieveType f t2
+		t' = if f t then [t] else []
+	in t' ++ t1' ++ t2'
+retrieveType f t@(ProductType t1 t2) =
+	let
+		t1' = retrieveType f t1
+		t2' = retrieveType f t2
+		t' = if f t then [t] else []
+	in t' ++ t1' ++ t2'
+retrieveType f t@(SumType t1 t2) =
 	let
 		t1' = retrieveType f t1
 		t2' = retrieveType f t2
@@ -92,12 +110,30 @@ isForAllType :: Type -> Bool
 isForAllType (ForAll _ _) = True
 isForAllType _ = False
 
+-- check if is unit type
+isUnitType :: Type -> Bool
+isUnitType UnitType = True
+isUnitType _ = False
+
+-- check if is product type
+isProductType :: Type -> Bool
+isProductType (ProductType _ _) = True
+isProductType _ = False
+
+-- check if is sum type
+isSumType :: Type -> Bool
+isSumType (SumType _ _) = True
+isSumType _ = False
+
 -- check if is ground type
 isGroundType :: Type -> Bool
 isGroundType (ArrowType DynType DynType) = True
 isGroundType IntType = True
 isGroundType BoolType = True
 isGroundType (ForAll _ DynType) = True
+isGroundType (UnitType) = True
+isGroundType (ProductType DynType DynType) = True
+isGroundType (SumType DynType DynType) = True
 isGroundType _ = False
 
 -- get ground type
@@ -106,6 +142,9 @@ getGroundType (ArrowType _ _) = ArrowType DynType DynType
 getGroundType IntType = IntType
 getGroundType BoolType = BoolType
 getGroundType (ForAll _ _) = ForAll "" DynType
+getGroundType (UnitType) = UnitType
+getGroundType (ProductType _ _) = ProductType DynType DynType
+getGroundType (SumType _ _) = SumType DynType DynType
 
 -- check if types have the same ground type
 sameGround :: Type -> Type -> Bool
@@ -130,6 +169,11 @@ substituteType s@(old, new) t@(BoolType) = t
 substituteType s@(old, new) t@(DynType) = t
 substituteType s@(old, new) t@(ForAll var t') =
 	ForAll var $ substituteType s t'
+substituteType s@(old, new) t@(UnitType) = t
+substituteType s@(old, new) t@(ProductType t1 t2) =
+	ProductType (substituteType s t1) (substituteType s t2)
+substituteType s@(old, new) t@(SumType t1 t2) =
+	SumType (substituteType s t1) (substituteType s t2)
 
 -- apply substitution to constraints
 substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
@@ -163,6 +207,8 @@ countTypeVariable :: Type -> [String]
 countTypeVariable t@(VarType var) = var : []
 countTypeVariable t@(ArrowType t1 t2) = countTypeVariable t1 ++ countTypeVariable t2
 countTypeVariable t@(ForAll var t') = countTypeVariable t'
+countTypeVariable t@(ProductType t1 t2) = countTypeVariable t1 ++ countTypeVariable t2
+countTypeVariable t@(SumType t1 t2) = countTypeVariable t1 ++ countTypeVariable t2
 countTypeVariable t = []
 
 -- Given a list of variable names, build forall quantifiers

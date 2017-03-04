@@ -308,6 +308,112 @@ evaluate e@(GreaterEqualTo expr1 expr2)
 			Int i2 = expr2
 		in Bool (i1 >= i2)
 
+-- if expression is an unit
+evaluate e@(Unit) = e
+
+-- if expression is a pair
+evaluate e@(Pair expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
+	-- reduce expr1
+	| not $ isValue expr1 =
+		let v1 = evaluate expr1
+		in evaluate $ Pair v1 expr2
+	-- reduce expr2
+	| not $ isValue expr2 =
+		let v2 = evaluate expr2
+		in evaluate $ Pair expr1 v2
+	| otherwise = e
+
+-- if expression is a first projection
+evaluate e@(First expr)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ First v
+	-- project first element of pair
+	| isPair expr =
+		let (Pair expr1 expr2) = expr
+		in evaluate $ expr1
+	-- C-FIRST - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			(ProductType t11 t12) = t1
+			(ProductType t21 t22) = t2
+		in evaluate $ Cast t11 t21 $ First expr'
+
+-- if expression is a second projection
+evaluate e@(Second expr)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ First v
+	-- project first element of pair
+	| isPair expr =
+		let (Pair expr1 expr2) = expr
+			in evaluate $ expr2
+	-- C-SECOND - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			(ProductType t11 t12) = t1
+			(ProductType t21 t22) = t2
+		in evaluate $ Cast t12 t22 $ Second expr'
+
+-- if expression is a case
+evaluate e@(Case expr (var1, expr1) (var2, expr2))
+	-- push blames to top level
+	| isBlame expr = expr
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ Case v (var1, expr1) (var2, expr2)
+	-- if is left tag
+	| isLeftTag expr =
+		let (LeftTag exprl typ) = expr
+		in evaluate $ substitute (var1, exprl) expr1
+	-- if is right tag
+	| isRightTag expr =
+		let (RightTag exprr typ) = expr
+		in evaluate $ substitute (var2, exprr) expr2
+	-- C-Case - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			(SumType t11 t12) = t1
+			(SumType t21 t22) = t2
+			cast1 = substitute (var1, Cast t11 t21 $ Variable var1) expr1
+			cast2 = substitute (var2, Cast t12 t22 $ Variable var2) expr2
+		in evaluate $ Case expr' (var1, cast1) (var2, cast2)
+
+-- if expression is a right tag
+evaluate e@(LeftTag expr typ)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in LeftTag v typ
+	| otherwise = e
+
+-- if expression is a right tag
+evaluate e@(RightTag expr typ)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in RightTag v typ
+	| otherwise = e
+
 -- if expression is a type information
 evaluate e@(TypeInformation typ expr) = expr
 

@@ -229,3 +229,57 @@ let_1 = Let "let"
 	(Application
 		(Variable "let")
 		(Ascription (Bool True) DynType))
+
+-- Examples to test Unit, Product and Sum types
+
+pairs1 = First $ Application
+	(Abstraction "x" $ If (First $ Variable "x") (Variable "x") (Variable "x"))
+	(Pair (Bool True) (Int 1))
+
+pairs1_dyn = First $ Application
+	(Annotation "x" DynType $ If (First $ Variable "x") (Variable "x") (Variable "x"))
+	(Pair (Bool True) (Int 1))
+
+sums1 = Case (LeftTag (Bool True) (SumType BoolType IntType))
+	("l", Application (Annotation "z" IntType $ Bool True) (Variable "l"))
+	("r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))
+
+sums1_dyn = Application
+	(Annotation "a" DynType $
+		Case (Variable "a")
+			("l", Application (Annotation "z" IntType $ Bool True) (Variable "l"))
+			("r", Application (Annotation "z" IntType $ Bool True) (Variable "r")))
+	(LeftTag (Bool True) (SumType BoolType IntType))
+
+sums1_dyn_lr = Case (RightTag (Int 1) (SumType DynType DynType))
+	("l", Application (Annotation "z" IntType $ Bool True) (Variable "l"))
+	("r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))
+
+sums1_dyn_r = Case (RightTag (Int 1) (SumType BoolType DynType))
+	("l", Application (Annotation "z" IntType $ Bool True) (Variable "l"))
+	("r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))
+
+-- (app (abs dyn x\(case (x) (y\app (abs int z\(tt)) (y)) (y\app (abs int z\(tt)) (y)))) (inl int tt))
+
+sums2 = Case (LeftTag (Bool True) (SumType BoolType IntType))
+			("l", Application not' (Variable "l"))
+			("r", Application isZero (Variable "r"))
+
+sums2_1_dyn = Application
+	(Annotation "a" DynType $
+		Case (Variable "a")
+			("l", Application not' (Variable "l"))
+			("r", Application isZero (Variable "r")))
+	(LeftTag (Bool True) (SumType BoolType IntType))
+
+sums2_dyn = Case (LeftTag (Bool True) (SumType DynType DynType))
+	("l", Application not' (Variable "l"))
+	("r", Application isZero (Variable "r"))
+
+sums2_dyn_r = Case (RightTag (Int 0) (SumType DynType IntType))
+	("l", Application not' (Variable "l"))
+	("r", Application isZero (Variable "r"))
+
+sums2_dyn_l = Case (LeftTag (Bool True) (SumType BoolType DynType))
+	("l", Application not' (Variable "l"))
+	("r", Application isZero (Variable "r"))
