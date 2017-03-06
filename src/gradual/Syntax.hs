@@ -320,9 +320,9 @@ substituteTypedExpression s = mapExpression (substituteTypedExpression' s)
 -- using the substitutions generated during constraint unification
 substituteTypedExpression' :: TypeSubstitutions -> Expression -> Expression
 substituteTypedExpression' s (Ascription expr typ) =
-	Ascription expr (insertTypeParameters $ foldr substituteType typ s)
+	Ascription expr (foldr substituteType typ s)
 substituteTypedExpression' s (TypeInformation typ expr) =
-	TypeInformation (insertTypeParameters $ foldr substituteType typ s) expr
+	TypeInformation (foldr substituteType typ s) expr
 substituteTypedExpression' s e = e
 
 -- remove type information from all terms in expression

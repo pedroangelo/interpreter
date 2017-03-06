@@ -327,7 +327,7 @@ replaceQuantifiedVariables (ForAll var typ) = do
 	i <- get
 	put (i+1)
 	-- obtain new type by replacing matched type parameters with fresh type variable
-	let typ' = substituteType (ParType var, newTypeVar i) typ
+	let typ' = substituteType (VarType var, newTypeVar i) typ
 	-- recursive call
 	replaceQuantifiedVariables typ'
 -- return when no more ForAll quantifier

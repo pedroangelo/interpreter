@@ -54,7 +54,7 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t2) : cs), t1 ∈ {Int, Bool} ∪ TVar ∪ TParam
 	-- => U ((t1 =C t2) : cs)
-	| isVarType t1 && (isIntType t2 || isBoolType t2 || isVarType t2 || isParType t2) = do
+	| isVarType t1 && (isIntType t2 || isBoolType t2 || isVarType t2) = do
 		let constraints = [Equality t1 t2]
 		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t21 -> t22) : cs), t1 ∉ Vars(t21 -> t22)

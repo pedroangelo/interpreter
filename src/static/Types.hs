@@ -12,7 +12,6 @@ type Bindings = (String, Type)
 -- Types
 data Type
 	= VarType String
-	| ParType String
 	| ArrowType Type Type
 	| IntType
 	| BoolType
@@ -32,7 +31,6 @@ data Constraint
 -- Type Mapping
 mapType :: (Type -> Type) -> Type -> Type
 mapType f t@(VarType var) = f t
-mapType f t@(ParType var) = f t
 mapType f t@(ArrowType t1 t2) = f (ArrowType (mapType f t1) (mapType f t2))
 mapType f t@(IntType) = f t
 mapType f t@(BoolType) = f t
@@ -48,19 +46,10 @@ mapType f t@(Mu var t') = f (Mu var $ mapType f t')
 newTypeVar :: Int -> Type
 newTypeVar index = VarType ("t" ++ show index)
 
--- build new type parameter
-newTypePar :: Int -> Type
-newTypePar index = ParType ("T" ++ show index)
-
 -- check if is variable type
 isVarType :: Type -> Bool
 isVarType (VarType _) = True
 isVarType _ = False
-
--- check if is parameter type
-isParType :: Type -> Bool
-isParType (ParType _) = True
-isParType _ = False
 
 -- check if is function type
 isArrowType :: Type -> Bool
@@ -111,9 +100,6 @@ substituteType :: TypeSubstitution -> Type -> Type
 substituteType s@(old, new) t@(VarType var)
 	| old == t = new
 	| otherwise = t
-substituteType s@(old, new) t@(ParType par)
-	| old == t = new
-	| otherwise = t
 substituteType s@(old, new) t@(ArrowType t1 t2) =
 	ArrowType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(IntType) = t
@@ -132,7 +118,6 @@ foldType :: (String, Type) -> Type -> Type
 foldType s@(old, new) t@(VarType var)
 	| old == var = new
 	| otherwise = t
-foldType s@(old, new) t@(ParType par) = t
 foldType s@(old, new) t@(ArrowType t1 t2) =
 	ArrowType (foldType s t1) (foldType s t2)
 foldType s@(old, new) t@(IntType) = t
@@ -151,15 +136,6 @@ substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
 substituteConstraint s (Equality t1 t2) =
 	Equality (substituteType s t1) (substituteType s t2)
 
--- transform unconstrained type variables into type parameters
-insertTypeParameters :: Type -> Type
-insertTypeParameters = mapType insertTypeParameters'
-
--- transform unconstrained type variable into type parameter
-insertTypeParameters' :: Type -> Type
-insertTypeParameters' (VarType t) = ParType $ map toUpper t
-insertTypeParameters' t = t
-
 -- Bind type variables with ForAll quantifiers
 generalizeTypeVariables :: Type -> Type
 generalizeTypeVariables t =
@@ -167,10 +143,8 @@ generalizeTypeVariables t =
 		-- get list of type variables
 		(exclude, include) = countTypeVariable t
 		vars = (nub include) \\ exclude
-		-- replace type variables with type parameters
-		t' = insertTypeParameters t
 	-- insert forall quantifiers
-	in buildForAll t' vars
+	in buildForAll t vars
 
 -- Collect type variables into a list
 countTypeVariable :: Type -> ([String], [String])
@@ -200,4 +174,4 @@ countTypeVariable t = ([], [])
 buildForAll :: Type -> [String] -> Type
 buildForAll t [] = t
 buildForAll t vars =
-	ForAll (map toUpper $ head vars) $ buildForAll t $ tail vars
+	ForAll (head vars) $ buildForAll t $ tail vars
