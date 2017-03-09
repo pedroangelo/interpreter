@@ -19,6 +19,7 @@ data Type
 	| UnitType
 	| ProductType Type Type
 	| SumType Type Type
+	| VariantType [(String, Type)]
 	| Mu String Type
 	deriving (Show, Eq)
 
@@ -38,6 +39,7 @@ mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
 mapType f t@(UnitType) = f t
 mapType f t@(ProductType t1 t2) = f (ProductType (mapType f t1) (mapType f t2))
 mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
+mapType f t@(VariantType ts) = f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 mapType f t@(Mu var t') = f (Mu var $ mapType f t')
 
 -- HELPER FUNCTIONS
@@ -86,6 +88,11 @@ isSumType :: Type -> Bool
 isSumType (SumType _ _) = True
 isSumType _ = False
 
+-- check if is variant type
+isVariantType :: Type -> Bool
+isVariantType (VariantType _) = True
+isVariantType _ = False
+
 -- check if is recursive type
 isMuType :: Type -> Bool
 isMuType (Mu _ _) = True
@@ -109,6 +116,8 @@ substituteType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(SumType t1 t2) =
 	SumType (substituteType s t1) (substituteType s t2)
+substituteType s@(old, new) t@(VariantType ts) =
+	VariantType $ map (\x -> (fst x, substituteType s $ snd x)) ts
 substituteType s@(old, new) t@(Mu var typ)
 	| isVarType old && var == var' = t
 	| otherwise = Mu var $ substituteType s typ
@@ -127,6 +136,8 @@ foldType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (foldType s t1) (foldType s t2)
 foldType s@(old, new) t@(SumType t1 t2) =
 	SumType (foldType s t1) (foldType s t2)
+foldType s@(old, new) t@(VariantType ts) =
+	VariantType $ map (\x -> (fst x, foldType s $ snd x)) ts
 foldType s@(old, new) t@(Mu var typ)
 	| old == var = foldType s typ
 	| otherwise = t
@@ -165,6 +176,13 @@ countTypeVariable t@(SumType t1 t2) =
 		(exclude1, include1) = countTypeVariable t1
 		(exclude2, include2) = countTypeVariable t2
 	in (exclude1 ++ exclude2, include1 ++ include2)
+countTypeVariable t@(VariantType ts) =
+	let
+		result = map (countTypeVariable . snd) ts
+		(exclude, include) = foldr1 (\x -> \y ->
+			(nub $ fst x ++ fst y,
+			nub $ snd x ++ snd y)) result
+	in (exclude, include)
 countTypeVariable t@(Mu var typ) =
 	let (exclude, include) = countTypeVariable typ
 	in (exclude ++ [var], include)

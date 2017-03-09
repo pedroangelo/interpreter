@@ -324,6 +324,29 @@ evaluate e@(RightTag expr typ)
 		in RightTag v typ
 	| otherwise = e
 
+-- if expression is a variant case
+evaluate e@(CaseVariant expr alternatives)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ CaseVariant v alternatives
+	-- if is tag
+	| isTag expr =
+		let
+			(Tag label expr' _) = expr
+			-- search alternatives for tag
+			chosen = head $ filter (\x -> (fst $ fst x) == label) alternatives
+			((_, var), expr'') = chosen
+		in evaluate $ substitute (var, expr') expr''
+
+-- if expressions is a tag
+evaluate e@(Tag label expr typ)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in Tag label v typ
+	| otherwise = e
+
 -- if expression is a fold
 evaluate e@(Fold typ expr)
 	-- reduce expr

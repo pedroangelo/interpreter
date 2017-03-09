@@ -20,19 +20,19 @@ generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
 	let varType = lookup var ctx
 	-- check if variable exists in context
-	if isNothing varType
+	if isNothing varType then
 		-- if not, throw error
-		then throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
-		else do
-			-- retrieve type
-			let finalType = fromJust $ varType
-			i <- get
-			-- replace quantified variables by type variables
-			-- instantiation of Damas-Milner
-			let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
-			put (i')
-			-- return type
-			return (finalType', [])
+		throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
+	else do
+		-- retrieve type
+		let finalType = fromJust $ varType
+		i <- get
+		-- replace quantified variables by type variables
+		-- instantiation of Damas-Milner
+		let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
+		put (i')
+		-- return type
+		return (finalType', [])
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do
@@ -246,7 +246,7 @@ generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints) <- generateConstraints typeAssignment
-	-- build for each expression in the application a type assignment
+	-- build for each expression a type assignment
 	let typeAssignment1 = ((var1, newVar1) : ctx, expr1)
 	let typeAssignment2 = ((var2, newVar2) : ctx, expr2)
 	-- obtain type and constraints for both expressions
@@ -269,7 +269,8 @@ generateConstraints (ctx, LeftTag expr typ) = do
 	-- obtain type and constraints for type assignment
 	(t, constraints) <- generateConstraints typeAssignment
 	-- return type along with all the constraints
-	return (typ, constraints ++	[Equality typ (SumType newVar1 newVar2), Equality t newVar1])
+	return (typ, constraints ++
+		[Equality typ (SumType newVar1 newVar2), Equality t newVar1])
 
 -- (Cinr) if expression is a right tag
 generateConstraints (ctx, RightTag expr typ) = do
@@ -284,7 +285,83 @@ generateConstraints (ctx, RightTag expr typ) = do
 	-- obtain type and constraints for type assignment
 	(t, constraints) <- generateConstraints typeAssignment
 	-- return type along with all the constraints
-	return (typ, constraints ++	[Equality typ (SumType newVar1 newVar2), Equality t newVar2])
+	return (typ, constraints ++
+		[Equality typ (SumType newVar1 newVar2), Equality t newVar2])
+
+-- (Ccasevariant) if expression is a variant case
+generateConstraints (ctx, CaseVariant expr alternatives) = do
+	-- number of alternatives
+	let n = length alternatives
+	-- counter for variable creation
+	i <- get
+	put (i+n+1)
+	-- create new type variables
+	let typeVars = map newTypeVar [i..i+n]
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- build list of alternatives with indexes
+	let indexedAlternatives = zip [0..] alternatives
+	-- build for each expression a type assignment
+	let typeAssignments = map
+		(\x -> let
+			-- get type variable from alternative
+			var = snd $ fst $ snd x
+			-- get expression from alternative
+			expr' = snd $ snd x
+			-- get index
+			index = fst x
+			-- add to context variable with new type
+			in ((var, typeVars !! index) : ctx, expr'))
+		indexedAlternatives
+	-- obtain type and constraints for both expressions
+	results <- mapM generateConstraints typeAssignments
+	-- get resulting types
+	let ts = map fst results
+	-- get resulting constraints
+	let cs = map snd results
+	-- build type consisting of new type variables
+	let list = map
+		(\x -> let
+			-- get label from alternatives
+			label = fst $ fst $ snd x
+			-- get index
+			index = fst x
+			-- build variant type
+			in (label, typeVars !! index))
+		indexedAlternatives
+	-- type of expr must be variant type
+	let cs1 = [Equality t (VariantType list)]
+	-- resulting types from each alternative must be equal
+	let cs2 = map (\x -> Equality (ts!!0) x) (tail ts)
+	-- return type along with all the constraints
+	return (ts !! 0, constraints ++ (concat cs) ++ cs1 ++ cs2)
+
+-- (Ctag) if expression is a tag
+generateConstraints (ctx, Tag label expr typ) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- if expression is annotated with a variant type
+	if isVariantType typ then do
+		-- retrieve type
+		let VariantType list = typ
+		-- obtain type according to tag
+		let tagType = lookup label list
+		-- if type doesn't exist in variant
+		if isNothing tagType then do
+			let cs = [Equality typ (VariantType [(label, t)])]
+			return (typ, constraints ++ cs)
+		else do
+			let finalType = fromJust tagType
+			-- return type along with all the constraints
+			return (typ, constraints ++ [Equality finalType t])
+	-- if expression is annotated with a wrong type
+	else do
+		let typ' = VariantType [(label, t)]
+		return (typ', constraints ++ [Equality typ typ'])
 
 -- (Cfold) if expression is a fold
 generateConstraints (ctx, Fold typ expr) = do

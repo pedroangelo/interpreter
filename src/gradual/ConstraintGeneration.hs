@@ -21,21 +21,21 @@ generateConstraints (ctx, Variable var) = do
 	-- obtain type from context
 	let varType = lookup var ctx
 	-- check if variable exists in context
-	if isNothing varType
+	if isNothing varType then
 		-- if not, throw error
-		then throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
-		else do
-			-- retrieve type
-			let finalType = fromJust $ varType
-			i <- get
-			-- replace quantified variables by type variables
-			-- instantiation of Damas-Milner
-			let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
-			put (i')
-			-- build typed expression
-			let typedExpr = TypeInformation finalType' (Variable var)
-			-- return type
-			return (finalType', [], typedExpr)
+		throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
+	else do
+		-- retrieve type
+		let finalType = fromJust $ varType
+		i <- get
+		-- replace quantified variables by type variables
+		-- instantiation of Damas-Milner
+		let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
+		put (i')
+		-- build typed expression
+		let typedExpr = TypeInformation finalType' (Variable var)
+		-- return type
+		return (finalType', [], typedExpr)
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do

@@ -6,23 +6,23 @@ import Types
 -- Expressions in λ-calculus and extensions
 data Expression
 	-- pure λ-calculus terms
-	= Variable String
-	| Abstraction String Expression
+	= Variable Var
+	| Abstraction Var Expression
 	| Application Expression Expression
 	-- Ascribed terms
 	| Ascription Expression Type
 	-- Annotated Abstraction
-	| Annotation String Type Expression
+	| Annotation Var Type Expression
 	-- Integers
 	| Int Int
 	-- Booleans
 	| Bool Bool
 	-- Let bindings
-	| Let String Expression Expression
+	| Let Var Expression Expression
 	-- Fixed point
 	| Fix Expression
 	-- Recursive let binding
-	| LetRec String Expression Expression
+	| LetRec Var Expression Expression
 	-- Conditional statement
 	| If Expression Expression Expression
 	-- Arithmetic Operators
@@ -44,13 +44,19 @@ data Expression
 	| First Expression
 	| Second Expression
 	-- Sums
-	| Case Expression (String, Expression) (String, Expression)
+	| Case Expression (Var, Expression) (Var, Expression)
 	| LeftTag Expression Type
 	| RightTag Expression Type
+	-- Variants
+	| CaseVariant Expression [((Label, Var) , Expression)]
+	| Tag Label Expression Type
 	-- Recursive Types
 	| Fold Type Expression
 	| Unfold Type Expression
 	deriving (Show, Eq)
+
+type Label = String
+type Var = String
 
 -- Expression Mapping
 mapExpression :: (Expression -> Expression) -> Expression -> Expression
@@ -82,6 +88,8 @@ mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
+mapExpression f e@(CaseVariant expr alternatives) =	f (CaseVariant (mapExpression f expr) (map (\x -> (fst x, mapExpression f (snd x))) alternatives))
+mapExpression f e@(Tag label expr typ) = f (Tag label (mapExpression f expr) typ)
 mapExpression f e@(Fold typ expr) = f (Fold typ (mapExpression f expr))
 mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
 
@@ -223,10 +231,20 @@ isLeftTag :: Expression -> Bool
 isLeftTag (LeftTag _ _) = True
 isLeftTag _ = False
 
--- check if is a second projection
+-- check if is a right tag
 isRightTag :: Expression -> Bool
 isRightTag (RightTag _ _) = True
 isRightTag _ = False
+
+-- check if is a variant case
+isCaseVariant :: Expression -> Bool
+isCaseVariant (CaseVariant _ _) = True
+isCaseVariant _ = False
+
+-- check if is a tag
+isTag :: Expression -> Bool
+isTag (Tag _ _ _) = True
+isTag _ = False
 
 -- check if is a fold
 isFold :: Expression -> Bool
@@ -248,6 +266,7 @@ isValue e =
 	isUnit e ||
 	(isPair e && isValuePair e) ||
 	((isLeftTag e || isRightTag e) && isValueSums e) ||
+	(isTag e && isValueVariants e) ||
 	isFold e
 
 -- check if pair is a value
@@ -255,11 +274,16 @@ isValuePair :: Expression -> Bool
 isValuePair (Pair expr1 expr2) = isValue expr1 && isValue expr2
 isValuePair _ = False
 
--- check if sums is a value
+-- check if tag is a value
 isValueSums :: Expression -> Bool
 isValueSums (LeftTag expr typ) = isValue expr
 isValueSums (RightTag expr typ) = isValue expr
 isValueSums _ = False
+
+-- check if variant tag is a value
+isValueVariants :: Expression -> Bool
+isValueVariants (Tag label expr typ) = isValue expr
+isValueVariants _ = False
 
 -- check if is an arithmetic operator
 isArithmeticOperator :: Expression -> Bool
@@ -397,6 +421,12 @@ substitute s@(old, new) e@(LeftTag expr typ) =
 substitute s@(old, new) e@(RightTag expr typ) =
 	RightTag (substitute s expr) typ
 
+-- if the expression is a variant case or tag
+substitute s@(old, new) e@(CaseVariant expr alternatives) =
+	CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
+substitute s@(old, new) e@(Tag label expr typ) =
+	Tag label (substitute s expr) typ
+
 -- if the expression is a fold or unfold
 substitute s@(old, new) e@(Fold typ expr) =
 	Fold typ (substitute s expr)
@@ -409,3 +439,10 @@ substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Exp
 substituteCase s@(old, new) e@(var, expr)
 	| old == var = e
 	| otherwise = (var, substitute s expr)
+
+
+-- substitution for case expressions
+substituteCaseVariant :: ExpressionSubstitution -> ((String, String), Expression) -> ((String, String), Expression)
+substituteCaseVariant s@(old, new) e@((label, var), expr)
+	| old == var = e
+	| otherwise = ((label, var), substitute s expr)
