@@ -6,23 +6,23 @@ import Types
 -- Expressions in λ-calculus and extensions
 data Expression
 	-- pure λ-calculus terms
-	= Variable String
-	| Abstraction String Expression
+	= Variable Var
+	| Abstraction Var Expression
 	| Application Expression Expression
 	-- Ascribed terms
 	| Ascription Expression Type
 	-- Annotated Abstraction
-	| Annotation String Type Expression
+	| Annotation Var Type Expression
 	-- Integers
 	| Int Int
 	-- Booleans
 	| Bool Bool
 	-- Let bindings
-	| Let String Expression Expression
+	| Let Var Expression Expression
 	-- Fixed point
 	| Fix Expression
 	-- Recursive let binding
-	| LetRec String Expression Expression
+	| LetRec Var Expression Expression
 	-- Conditional statement
 	| If Expression Expression Expression
 	-- Arithmetic Operators
@@ -44,16 +44,24 @@ data Expression
 	| First Expression
 	| Second Expression
 	-- Sums
-	| Case Expression (String, Expression) (String, Expression)
+	| Case Expression (Var, Expression) (Var, Expression)
 	| LeftTag Expression Type
 	| RightTag Expression Type
+	-- Variants
+	| CaseVariant Expression Alternatives
+	| Tag Label Expression Type
 	-- Type Annotations
 	| TypeInformation Type Expression
 	-- Casts
 	| Cast Type Type Expression
-	-- Blames
+	-- Blame
 	| Blame Type String
 	deriving (Show, Eq)
+
+type Alternatives = [Alternative]
+type Alternative = ((Label, Var), Expression)
+
+-- MAPPING
 
 -- Expression Mapping
 mapExpression :: (Expression -> Expression) -> Expression -> Expression
@@ -85,11 +93,13 @@ mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
+mapExpression f e@(CaseVariant expr alternatives) =	f (CaseVariant (mapExpression f expr) (map (\x -> (fst x, mapExpression f (snd x))) alternatives))
+mapExpression f e@(Tag label expr typ) = f (Tag label (mapExpression f expr) typ)
 mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
 mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
 mapExpression f e@(Blame typ label) = f e
 
--- HELPER FUNCTIONS
+-- CHECKS
 
 -- check if it's a variable
 isVariable :: Expression -> Bool
@@ -231,6 +241,16 @@ isRightTag :: Expression -> Bool
 isRightTag (RightTag _ _) = True
 isRightTag _ = False
 
+-- check if is a variant case
+isCaseVariant :: Expression -> Bool
+isCaseVariant (CaseVariant _ _) = True
+isCaseVariant _ = False
+
+-- check if is a tag
+isTag :: Expression -> Bool
+isTag (Tag _ _ _) = True
+isTag _ = False
+
 -- check if is a type information
 isTypeInformation :: Expression -> Bool
 isTypeInformation (TypeInformation _ _) = True
@@ -256,6 +276,7 @@ isValue e =
 	isUnit e ||
 	(isPair e && isValuePair e) ||
 	((isLeftTag e || isRightTag e) && isValueSums e) ||
+	(isTag e && isValueVariants e) ||
 	isValueCast e ||
 	isBlame e
 
@@ -266,9 +287,14 @@ isValuePair _ = False
 
 -- check if sums is a value
 isValueSums :: Expression -> Bool
-isValueSums (LeftTag expr typ) = isValue expr
-isValueSums (RightTag expr typ) = isValue expr
+isValueSums (LeftTag expr _) = isValue expr
+isValueSums (RightTag expr _) = isValue expr
 isValueSums _ = False
+
+-- check if variant tag is a value
+isValueVariants :: Expression -> Bool
+isValueVariants (Tag _ expr _) = isValue expr
+isValueVariants _ = False
 
 -- check if cast is a value
 isValueCast :: Expression -> Bool
@@ -277,6 +303,7 @@ isValueCast (Cast t1 t2 e) =
 	(isArrowType t1 && isArrowType t2 && isValue e && t1 /= t2) ||
 	(isProductType t1 && isProductType t2 && isValue e && t1 /= t2) ||
 	(isSumType t1 && isSumType t2 && isValue e && t1 /= t2) ||
+	(isVariantType t1 && isVariantType t2 && isValue e && t1 /= t2) ||
 	(isForAllType t1 && isForAllType t2 && t1 /= t2 && isValue e)
 isValueCast _ = False
 
@@ -298,6 +325,8 @@ isRelationalOperator (LesserEqualTo _ _) = True
 isRelationalOperator (GreaterEqualTo _ _) = True
 isRelationalOperator _ = False
 
+-- PROJECTIONS
+
 -- get expressions from arithmetic and relational operators
 fromOperator :: Expression -> (Expression, Expression)
 fromOperator (Addition expr1 expr2) = (expr1, expr2)
@@ -311,29 +340,14 @@ fromOperator (GreaterThan expr1 expr2) = (expr1, expr2)
 fromOperator (LesserEqualTo expr1 expr2) = (expr1, expr2)
 fromOperator (GreaterEqualTo expr1 expr2) = (expr1, expr2)
 
--- substitute types in annotations and type information in all terms
--- using the substitutions generated during constraint unification
-substituteTypedExpression :: TypeSubstitutions -> Expression -> Expression
-substituteTypedExpression s = mapExpression (substituteTypedExpression' s)
+-- get type from type information
+fromTypeInformation :: Expression -> Type
+fromTypeInformation (TypeInformation typ _) = typ
 
--- substitute types in annotations and type information
--- using the substitutions generated during constraint unification
-substituteTypedExpression' :: TypeSubstitutions -> Expression -> Expression
-substituteTypedExpression' s (Ascription expr typ) =
-	Ascription expr (foldr substituteType typ s)
-substituteTypedExpression' s (TypeInformation typ expr) =
-	TypeInformation (foldr substituteType typ s) expr
-substituteTypedExpression' s e = e
-
--- remove type information from all terms in expression
-removeTypeInformation :: Expression -> Expression
-removeTypeInformation = mapExpression removeTypeInformation'
-
--- remove type information from expression
-removeTypeInformation' :: Expression -> Expression
-removeTypeInformation' (TypeInformation _ expr) = expr
-removeTypeInformation' (Ascription expr _) = expr
-removeTypeInformation' e = e
+-- get label, var and expr from alternatives
+fromAlternatives :: Alternatives -> ([Label], [Var], [Expression])
+fromAlternatives alternatives =
+	unzip3 $ map (\x -> (fst $ fst x, snd $ fst x, snd x)) alternatives
 
 -- SUBSTITUTIONS
 type ExpressionSubstitution = (String, Expression)
@@ -440,6 +454,12 @@ substitute s@(old, new) e@(LeftTag expr typ) =
 substitute s@(old, new) e@(RightTag expr typ) =
 	RightTag (substitute s expr) typ
 
+-- if the expression is a variant case or tag
+substitute s@(old, new) e@(CaseVariant expr alternatives) =
+	CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
+substitute s@(old, new) e@(Tag label expr typ) =
+	Tag label (substitute s expr) typ
+
 -- if expression is a type information, propagate substitutions
 substitute s@(old, new) e@(TypeInformation typ expr) =
 	TypeInformation typ $ substitute s expr
@@ -456,3 +476,44 @@ substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Exp
 substituteCase s@(old, new) e@(var, expr)
 	| old == var = e
 	| otherwise = (var, substitute s expr)
+
+-- substitution for case expressions
+substituteCaseVariant :: ExpressionSubstitution -> Alternative -> Alternative
+substituteCaseVariant s@(old, new) e@((label, var), expr)
+	| old == var = e
+	| otherwise = ((label, var), substitute s expr)
+
+-- substitute types in annotations and type information in all terms
+-- using the substitutions generated during constraint unification
+substituteTypedExpression :: TypeSubstitutions -> Expression -> Expression
+substituteTypedExpression s = mapExpression (substituteTypedExpression' s)
+
+-- substitute types in annotations and type information
+-- using the substitutions generated during constraint unification
+substituteTypedExpression' :: TypeSubstitutions -> Expression -> Expression
+substituteTypedExpression' s (Ascription expr typ) =
+	Ascription expr (foldr substituteType typ s)
+substituteTypedExpression' s (TypeInformation typ expr) =
+	TypeInformation (foldr substituteType typ s) expr
+substituteTypedExpression' s e = e
+
+-- HELPER FUNCTIONS
+
+-- remove type information from all terms in expression
+removeTypeInformation :: Expression -> Expression
+removeTypeInformation = mapExpression removeTypeInformation'
+
+-- remove type information from expression
+removeTypeInformation' :: Expression -> Expression
+removeTypeInformation' (TypeInformation _ expr) = expr
+removeTypeInformation' (Ascription expr _) = expr
+removeTypeInformation' e = e
+
+fst3 :: (a, b, c) -> a
+fst3 (a, _, _) = a
+
+snd3 :: (a, b, c) -> b
+snd3 (_, b, _) = b
+
+trd3 :: (a, b, c) -> c
+trd3 (_, _, c) = c

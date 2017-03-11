@@ -6,21 +6,20 @@ import Data.List
 
 -- Context holds bindings between variables and types
 type Context = [Bindings]
-type Bindings = (String, Type)
+type Bindings = (Var, Type)
 
 -- Types in λ-calculus and extensions
--- Types
 data Type
-	= VarType String
+	= VarType Var
 	| ArrowType Type Type
 	| IntType
 	| BoolType
-	| ForAll String Type
+	| ForAll Var Type
 	| UnitType
 	| ProductType Type Type
 	| SumType Type Type
-	| VariantType [(String, Type)]
-	| Mu String Type
+	| VariantType [(Label, Type)]
+	| Mu Var Type
 	deriving (Show, Eq)
 
 -- Constraints
@@ -28,6 +27,11 @@ type Constraints = [Constraint]
 data Constraint
 	= Equality Type Type
 	deriving (Show, Eq)
+
+type Label = String
+type Var = String
+
+-- MAPPING
 
 -- Type Mapping
 mapType :: (Type -> Type) -> Type -> Type
@@ -42,11 +46,7 @@ mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
 mapType f t@(VariantType ts) = f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 mapType f t@(Mu var t') = f (Mu var $ mapType f t')
 
--- HELPER FUNCTIONS
-
--- build new type variable
-newTypeVar :: Int -> Type
-newTypeVar index = VarType ("t" ++ show index)
+-- CHECKS
 
 -- check if is variable type
 isVarType :: Type -> Bool
@@ -98,6 +98,12 @@ isMuType :: Type -> Bool
 isMuType (Mu _ _) = True
 isMuType _ = False
 
+-- compare labels of variant types
+compareLabels :: Type -> Type -> Bool
+compareLabels (VariantType list1) (VariantType list2) =
+	and $ map (\x -> (fst $ fst x) == (fst $ snd x)) $ zip list1 list2
+compareLabels _ _ = False
+
 -- SUBSTITUTIONS
 type TypeSubstitutions = [TypeSubstitution]
 type TypeSubstitution = (Type, Type)
@@ -147,6 +153,8 @@ substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
 substituteConstraint s (Equality t1 t2) =
 	Equality (substituteType s t1) (substituteType s t2)
 
+-- HELPER FUNCTIONS
+
 -- Bind type variables with ForAll quantifiers
 generalizeTypeVariables :: Type -> Type
 generalizeTypeVariables t =
@@ -193,3 +201,7 @@ buildForAll :: Type -> [String] -> Type
 buildForAll t [] = t
 buildForAll t vars =
 	ForAll (head vars) $ buildForAll t $ tail vars
+
+-- build new type variable
+newTypeVar :: Int -> Type
+newTypeVar index = VarType ("t" ++ show index)

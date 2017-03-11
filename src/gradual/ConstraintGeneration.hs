@@ -358,6 +358,93 @@ generateConstraints (ctx, RightTag expr typ) = do
 	return ((SumType newVar1 newVar2), constraints ++
 		[Consistency typ (SumType newVar1 newVar2), Consistency t newVar2], typedExpr)
 
+-- (Ccasevariant) if expression is a variant case
+generateConstraints (ctx, CaseVariant expr alternatives) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- get constraints for each type in variant
+	(types, constraints') <-
+		variantComponents (fst3 $ fromAlternatives alternatives) t
+	-- build for each expression a type assignment
+	let typeAssignments = map
+		(\x -> let
+			-- get type variable from alternative
+			var = snd $ fst $ snd x
+			-- get expression from alternative
+			expr' = snd $ snd x
+			-- get type from types
+			typ = fst x
+			-- add to context variable with new type
+			in ((var, typ) : ctx, expr'))
+		$ zip types alternatives
+	-- obtain type and constraints for expressions
+	results <- mapM generateConstraints typeAssignments
+	-- get resulting types, constraints and typed expressions
+	let (ts, cs, exprs_typed) = unzip3 results
+	(t3, constraints'') <- lift $ foldM meetM (head ts, []) (tail ts)
+	-- build each typed expression
+	let typedAlternatives = map
+		(\x -> let
+			-- get label
+			label = fst $ fst $ fst x
+			-- get var
+			var = snd $ fst $ fst x
+			-- get typed expression
+			expr_typed = snd x
+			in ((label, var), expr_typed))
+		$ zip alternatives exprs_typed
+	-- build typed expression
+	let typedExpr = TypeInformation t3 (CaseVariant expr_typed typedAlternatives)
+	-- return type along with all the constraints
+	return (t3, constraints ++ (concat cs) ++
+		constraints' ++ constraints'', typedExpr)
+
+-- (Ctag) if expression is a tag
+generateConstraints (ctx, Tag label expr typ) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- if expression is annotated with a variant type
+	if isVariantType typ then do
+		-- retrieve type
+		let VariantType list = typ
+		-- obtain type according to tag
+		let tagType = lookup label list
+		-- if type doesn't exist in variant
+		if isNothing tagType then do
+			-- build typed expression
+			let typedExpr = TypeInformation typ (Tag label expr_typed typ)
+			let cs = [Equality typ (VariantType [(label, t)])]
+			return (typ, constraints ++ cs, typedExpr)
+		else do
+			-- number of alternatives
+			let n = length list
+			-- counter for variable creation
+			i <- get
+			put (i+n+1)
+			-- create new type variables
+			let typeVars = map newTypeVar [i..i+n]
+			-- get labels
+			let (labels, _) = fromVariant typ
+			-- create list
+			let listVars = zip labels typeVars
+			-- build typed expression
+			let typedExpr = TypeInformation (VariantType listVars) (Tag label expr_typed typ)
+			-- obtain type according to tag
+			let tagTypeVar = fromJust $ lookup label listVars
+			-- return type along with all the constraints
+			return (VariantType listVars, constraints ++
+				[Consistency (VariantType listVars) typ, Consistency tagTypeVar t], typedExpr)
+	-- if expression is annotated with other than variant type
+	else do
+		let typ' = VariantType [(label, t)]
+		-- build typed expression
+		let typedExpr = TypeInformation typ' (Tag label expr_typed typ)
+		return (typ', constraints ++ [Consistency typ typ'], typedExpr)
+
 -- (C:) if expression if a type information
 generateConstraints (ctx, e@(TypeInformation typ expr)) = do
 	-- build type assignment
@@ -457,9 +544,32 @@ meet t1 t2
 		(t1', constraints1) <- meet t11 t21
 		(t2', constraints2) <- meet t12 t22
 		return (SumType t1' t2', constraints1 ++ constraints2)
+	| isVariantType t1 && isVariantType t2 && compareLabels t1 t2 = do
+		let	(VariantType list1) = t1
+		let (VariantType list2) = t2
+		-- remove labels
+		let list1' = map snd list1
+		let list2' = map snd list2
+		let list = zip list1' list2'
+		-- run meet for each pair of types
+		results <- mapM (\x -> meet (fst x) (snd x)) list
+		-- get resulting types
+		let ts = map fst results
+		-- get resulting constraints
+		let cs = map snd results
+		-- get labels
+		let labels = map fst list1
+		return (VariantType $ zip labels ts, concat cs)
 	| otherwise = throwError $
 		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not compatible!!"
 
+meetM :: (Type, Constraints) -> Type -> Except String (Type, Constraints)
+meetM (t1, c) t2 = do
+	(t, constraints) <- meet t1 t2
+	return (t, c ++ constraints)
+
+
+-- get components of sum type
 sumComponents :: Type -> StateT Int (Except String) ((Type, Type), Constraints)
 sumComponents t
 	-- if t is type variable
@@ -469,17 +579,50 @@ sumComponents t
 		put (i+2)
 		let t1 = newTypeVar i
 		let t2 = newTypeVar (i+1)
-		-- return as type t2 and equality relation t = t1 + t2
+		-- return types and equality relation t = t1 + t2
 		return ((t1, t2), [Equality t (SumType t1 t2)])
-	-- if t is arrow type
+	-- if t is sum type
 	| isSumType t = do
 		-- let t1 and t2 such that t = t1 + t2
 		let (SumType t1 t2) = t
-		-- return as type t2
+		-- return types
 		return ((t1,t2), [])
 	-- if t is dynamic type
 	| isDynType t = do
 		-- return dynamic typ
 		return ((DynType, DynType), [])
 	-- throw error
-	| otherwise = throwError $ "Error: Type " ++ (show t) ++ " has no left side!!"
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a sum type!!"
+
+-- get components of variant type
+variantComponents :: [Label] -> Type
+	-> StateT Int (Except String) ([Type], Constraints)
+variantComponents labels t
+	-- if t is type variable
+	| isVarType t = do
+		-- number of alternatives
+		let n = length labels
+		-- counter for variable creation
+		i <- get
+		put (i+n+1)
+		-- create new type variables
+		let typeVars = map newTypeVar [i..i+n]
+		-- build type consisting of new type variables
+		let list = zip labels typeVars
+		-- return types and equality relation t = <li:Ti>
+		return (typeVars, [Equality t (VariantType list)])
+	-- if t is variant type
+	| isVariantType t = do
+		let (_, types) = fromVariant t
+		-- return as type t2
+		return (types, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- number of alternatives
+		let n = length labels
+		-- return dynamic type
+		return (replicate n DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a variant type!!"

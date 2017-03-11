@@ -48,15 +48,17 @@ data Expression
 	| LeftTag Expression Type
 	| RightTag Expression Type
 	-- Variants
-	| CaseVariant Expression [((Label, Var) , Expression)]
+	| CaseVariant Expression Alternatives
 	| Tag Label Expression Type
 	-- Recursive Types
 	| Fold Type Expression
 	| Unfold Type Expression
 	deriving (Show, Eq)
 
-type Label = String
-type Var = String
+type Alternatives = [Alternative]
+type Alternative = ((Label, Var), Expression)
+
+-- MAPPING
 
 -- Expression Mapping
 mapExpression :: (Expression -> Expression) -> Expression -> Expression
@@ -94,7 +96,7 @@ mapExpression f e@(Fold typ expr) = f (Fold typ (mapExpression f expr))
 mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
 
 
--- HELPER FUNCTIONS
+-- CHECKS
 
 -- check if it's a variable
 isVariable :: Expression -> Bool
@@ -303,6 +305,8 @@ isRelationalOperator (LesserEqualTo _ _) = True
 isRelationalOperator (GreaterEqualTo _ _) = True
 isRelationalOperator _ = False
 
+-- PROJECTIONS
+
 -- get expressions from arithmetic and relational operators
 fromOperator :: Expression -> (Expression, Expression)
 fromOperator (Addition expr1 expr2) = (expr1, expr2)
@@ -433,13 +437,11 @@ substitute s@(old, new) e@(Fold typ expr) =
 substitute s@(old, new) e@(Unfold typ expr) =
 	Unfold typ (substitute s expr)
 
-
 -- substitution for case expressions
 substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Expression)
 substituteCase s@(old, new) e@(var, expr)
 	| old == var = e
 	| otherwise = (var, substitute s expr)
-
 
 -- substitution for case expressions
 substituteCaseVariant :: ExpressionSubstitution -> ((String, String), Expression) -> ((String, String), Expression)

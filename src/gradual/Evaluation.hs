@@ -7,6 +7,8 @@ import Syntax
 import Types
 import Examples
 
+evaluationStyle = evaluate
+
 -- evaluate using call-by-value strategy
 evaluate :: Expression -> Expression
 
@@ -24,11 +26,11 @@ evaluate e@(Application expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Application v1 expr2
+		in evaluationStyle $ Application v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Application expr1 v2
+		in evaluationStyle $ Application expr1 v2
 	-- C-BETA - simulate casts on data types
 	| isCast expr1 =
 		let
@@ -36,21 +38,21 @@ evaluate e@(Application expr1 expr2)
 			(ArrowType t11 t12) = t1
 			(ArrowType t21 t22) = t2
 			expr2' = Cast t21 t11 expr2
-		in evaluate $ Cast t12 t22 $ Application expr1' expr2'
+		in evaluationStyle $ Cast t12 t22 $ Application expr1' expr2'
 	-- beta reduction
 	| isAbstraction expr1 && isValue expr2 =
 		let (Abstraction var expr) = expr1
-		in evaluate $ substitute (var, expr2) expr
+		in evaluationStyle $ substitute (var, expr2) expr
 
 -- if expression is an ascription
 evaluate e@(Ascription expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
 	-- remove ascription
-	| isValue expr = evaluate $ expr
+	| isValue expr = evaluationStyle $ expr
 	| otherwise =
 		let v1 = evaluate expr
-		in evaluate $ Ascription v1 typ
+		in evaluationStyle $ Ascription v1 typ
 
 -- if expression is an annotated abstraction
 evaluate e@(Annotation var typ expr) =
@@ -71,9 +73,9 @@ evaluate e@(Let var expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Let var v1 expr2
+		in evaluationStyle $ Let var v1 expr2
 	-- substitute ocurrences of var in expr2 by expr1
-	| otherwise = evaluate $ substitute (var, expr1) expr2
+	| otherwise = evaluationStyle $ substitute (var, expr1) expr2
 
 -- if expression is fixed point
 evaluate e@(Fix expr)
@@ -82,16 +84,16 @@ evaluate e@(Fix expr)
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluate $ Fix v
+		in evaluationStyle $ Fix v
 	-- substitute abstraction variable with e in expr
 	| isAbstraction expr =
 		let (Abstraction var expr') = expr
-		in evaluate $ substitute (var, e) expr'
+		in evaluationStyle $ substitute (var, e) expr'
 
 -- if expression is a recursive let binding
 evaluate e@(LetRec var expr1 expr2) =
 	-- derive form into a let binding
-	evaluate $ Let var (Fix $ Abstraction var expr1) expr2
+	evaluationStyle $ Let var (Fix $ Abstraction var expr1) expr2
 
 -- if expression is a conditional statement
 evaluate e@(If expr1 expr2 expr3)
@@ -102,11 +104,11 @@ evaluate e@(If expr1 expr2 expr3)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ If v1 expr2 expr3
+		in evaluationStyle $ If v1 expr2 expr3
 	-- if expr1 is True, evaluate expr2
-	| expr1 == Bool True = evaluate expr2
+	| expr1 == Bool True = evaluationStyle expr2
 	--- if expr1 is False, evaluate expr3
-	| expr1 == Bool False = evaluate expr3
+	| expr1 == Bool False = evaluationStyle expr3
 
 -- if expression is a addition
 evaluate e@(Addition expr1 expr2)
@@ -116,11 +118,11 @@ evaluate e@(Addition expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Addition v1 expr2
+		in evaluationStyle $ Addition v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Addition expr1 v2
+		in evaluationStyle $ Addition expr1 v2
 	-- call native addition function between expr1 and expr2
 	| otherwise =
 		let
@@ -136,11 +138,11 @@ evaluate e@(Subtraction expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Subtraction v1 expr2
+		in evaluationStyle $ Subtraction v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Subtraction expr1 v2
+		in evaluationStyle $ Subtraction expr1 v2
 	-- call native subtraction function between expr1 and expr2
 	| otherwise =
 		let
@@ -156,11 +158,11 @@ evaluate e@(Multiplication expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Multiplication v1 expr2
+		in evaluationStyle $ Multiplication v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Multiplication expr1 v2
+		in evaluationStyle $ Multiplication expr1 v2
 	-- call native multiplication function between expr1 and expr2
 	| otherwise =
 		let
@@ -176,11 +178,11 @@ evaluate e@(Division expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Division v1 expr2
+		in evaluationStyle $ Division v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Division expr1 v2
+		in evaluationStyle $ Division expr1 v2
 	-- call native division function between expr1 and expr2
 	| otherwise =
 		let
@@ -196,11 +198,11 @@ evaluate e@(Equal expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Equal v1 expr2
+		in evaluationStyle $ Equal v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Equal expr1 v2
+		in evaluationStyle $ Equal expr1 v2
 	-- call native equality check between expr1 and expr2
 	| otherwise =
 		let
@@ -216,11 +218,11 @@ evaluate e@(NotEqual expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ NotEqual v1 expr2
+		in evaluationStyle $ NotEqual v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ NotEqual expr1 v2
+		in evaluationStyle $ NotEqual expr1 v2
 	-- call native non equality check between expr1 and expr2
 	| otherwise =
 		let
@@ -236,11 +238,11 @@ evaluate e@(LesserThan expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ LesserThan v1 expr2
+		in evaluationStyle $ LesserThan v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ LesserThan expr1 v2
+		in evaluationStyle $ LesserThan expr1 v2
 	-- call native lesser than check between expr1 and expr2
 	| otherwise =
 		let
@@ -256,11 +258,11 @@ evaluate e@(GreaterThan expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ GreaterThan v1 expr2
+		in evaluationStyle $ GreaterThan v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ GreaterThan expr1 v2
+		in evaluationStyle $ GreaterThan expr1 v2
 	-- call native greater than check between expr1 and expr2
 	| otherwise =
 		let
@@ -276,11 +278,11 @@ evaluate e@(LesserEqualTo expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ LesserEqualTo v1 expr2
+		in evaluationStyle $ LesserEqualTo v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ LesserEqualTo expr1 v2
+		in evaluationStyle $ LesserEqualTo expr1 v2
 	-- call native lesser than or equal to check between expr1 and expr2
 	| otherwise =
 		let
@@ -296,11 +298,11 @@ evaluate e@(GreaterEqualTo expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ GreaterEqualTo v1 expr2
+		in evaluationStyle $ GreaterEqualTo v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ GreaterEqualTo expr1 v2
+		in evaluationStyle $ GreaterEqualTo expr1 v2
 	-- call native greater than or equal to check between expr1 and expr2
 	| otherwise =
 		let
@@ -319,11 +321,11 @@ evaluate e@(Pair expr1 expr2)
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
-		in evaluate $ Pair v1 expr2
+		in evaluationStyle $ Pair v1 expr2
 	-- reduce expr2
 	| not $ isValue expr2 =
 		let v2 = evaluate expr2
-		in evaluate $ Pair expr1 v2
+		in evaluationStyle $ Pair expr1 v2
 	| otherwise = e
 
 -- if expression is a first projection
@@ -333,18 +335,18 @@ evaluate e@(First expr)
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluate $ First v
+		in evaluationStyle $ First v
 	-- project first element of pair
 	| isPair expr =
 		let (Pair expr1 expr2) = expr
-		in evaluate $ expr1
+		in evaluationStyle $ expr1
 	-- C-FIRST - simulate casts on data types
 	| isCast expr =
 		let
 			(Cast t1 t2 expr') = expr
 			(ProductType t11 t12) = t1
 			(ProductType t21 t22) = t2
-		in evaluate $ Cast t11 t21 $ First expr'
+		in evaluationStyle $ Cast t11 t21 $ First expr'
 
 -- if expression is a second projection
 evaluate e@(Second expr)
@@ -353,18 +355,18 @@ evaluate e@(Second expr)
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluate $ First v
+		in evaluationStyle $ First v
 	-- project first element of pair
 	| isPair expr =
 		let (Pair expr1 expr2) = expr
-			in evaluate $ expr2
+		in evaluationStyle $ expr2
 	-- C-SECOND - simulate casts on data types
 	| isCast expr =
 		let
 			(Cast t1 t2 expr') = expr
 			(ProductType t11 t12) = t1
 			(ProductType t21 t22) = t2
-		in evaluate $ Cast t12 t22 $ Second expr'
+		in evaluationStyle $ Cast t12 t22 $ Second expr'
 
 -- if expression is a case
 evaluate e@(Case expr (var1, expr1) (var2, expr2))
@@ -375,15 +377,15 @@ evaluate e@(Case expr (var1, expr1) (var2, expr2))
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluate $ Case v (var1, expr1) (var2, expr2)
+		in evaluationStyle $ Case v (var1, expr1) (var2, expr2)
 	-- if is left tag
 	| isLeftTag expr =
 		let (LeftTag exprl typ) = expr
-		in evaluate $ substitute (var1, exprl) expr1
+		in evaluationStyle $ substitute (var1, exprl) expr1
 	-- if is right tag
 	| isRightTag expr =
 		let (RightTag exprr typ) = expr
-		in evaluate $ substitute (var2, exprr) expr2
+		in evaluationStyle $ substitute (var2, exprr) expr2
 	-- C-Case - simulate casts on data types
 	| isCast expr =
 		let
@@ -392,7 +394,7 @@ evaluate e@(Case expr (var1, expr1) (var2, expr2))
 			(SumType t21 t22) = t2
 			cast1 = substitute (var1, Cast t11 t21 $ Variable var1) expr1
 			cast2 = substitute (var2, Cast t12 t22 $ Variable var2) expr2
-		in evaluate $ Case expr' (var1, cast1) (var2, cast2)
+		in evaluationStyle $ Case expr' (var1, cast1) (var2, cast2)
 
 -- if expression is a right tag
 evaluate e@(LeftTag expr typ)
@@ -414,6 +416,58 @@ evaluate e@(RightTag expr typ)
 		in RightTag v typ
 	| otherwise = e
 
+-- if expression is a variant case
+evaluate e@(CaseVariant expr alternatives)
+	-- push blames to top level
+	| isBlame expr = expr
+	| any isBlame $ trd3 $ fromAlternatives alternatives = let
+		blames = filter isBlame (trd3 $ fromAlternatives alternatives)
+		in head blames
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluationStyle $ CaseVariant v alternatives
+	-- if is tag
+	| isTag expr =
+		let
+			(Tag label expr' typ) = expr
+			-- obtain correct alternative according to label
+			((_, var), alternative) =
+				head $ filter (\x -> label == (fst $ fst x)) alternatives
+		in evaluationStyle $ substitute (var, expr') alternative
+	-- C-CaseVariant - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			-- get types from variant
+			list = zip (snd $ fromVariant t1) (snd $ fromVariant t2)
+			-- build list with types from each alternative
+			list' = zip list alternatives
+			-- insert casts in each alternative
+			casts = map
+				(\x -> let
+					-- get types
+					t' = fst $ fst x
+					t'' = snd $ fst x
+					-- get label, var and expr
+					label = fst $ fst $ snd x
+					var = snd $ fst $ snd x
+					expr'' = snd $ snd x
+					cast = Cast t' t'' $ Variable var
+					in ((label, var), substitute (var, cast) expr''))
+				list'
+		in evaluationStyle $ CaseVariant expr' casts
+
+-- if expression is a tag
+evaluate e@(Tag label expr typ)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in Tag label v typ
+	| otherwise = e
+
 -- if expression is a type information
 evaluate e@(TypeInformation typ expr) = expr
 
@@ -426,12 +480,12 @@ evaluate e@(Cast t1 t2 expr)
 	-- evaluate inside a cast
 	| (not $ isValue expr) =
 		let expr2 = evaluate expr
-		in evaluate $ Cast t1 t2 expr2
+		in evaluationStyle $ Cast t1 t2 expr2
 	-- ID-BASE - remove casts to same types
-	| isValue expr && t1 == t2 = evaluate expr
+	| isValue expr && t1 == t2 = evaluationStyle expr
 	-- SUCCEED - cast is sucessful
 	| isCast expr && t1 == DynType && t2' == DynType &&	isGroundType t2 && t1' == t2 =
-			evaluate expr'
+			evaluationStyle expr'
 	-- FAIL - cast fails
 	| isCast expr && t1 == DynType && t2' == DynType &&
 		isGroundType t2 && isGroundType t1' && (not $ sameGround t1' t2) =
@@ -439,11 +493,11 @@ evaluate e@(Cast t1 t2 expr)
 	-- GROUND - cast types through their ground types
 	| (not $ isGroundType t1) && t2 == DynType =
 		let g = getGroundType t1
-		in evaluate $ Cast g DynType $ Cast t1 g expr
+		in evaluationStyle $ Cast g DynType $ Cast t1 g expr
 	-- EXPAND - cast types through their ground types
 	| (not $ isGroundType t2) && t1 == DynType =
 		let g = getGroundType t2
-		in evaluate $ Cast g t2 $ Cast DynType g expr
+		in evaluationStyle $ Cast g t2 $ Cast DynType g expr
 	-- Project types and expression from inner casts
 	where
 		(Cast t1' t2' expr') = expr

@@ -47,6 +47,14 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		let (SumType t21 t22) = t2
 		let constraints = [Consistency t12 t22, Consistency t11 t21]
 		unifyConstraints types (constraints ++ cs) counter
+	-- U ((<l1i:T1i> ~C <l2i:T2i>) : cs)
+	-- => U
+	| isVariantType t1 && isVariantType t2 && compareLabels t1 t2 = do
+		let (_, types1) = fromVariant t1
+		let (_, types2) = fromVariant t2
+		let constraints =
+			map (\x -> Consistency (fst x) (snd x)) $ zip types1 types2
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 ~C t1) : cs)
 	| (not $ isVarType t1) && isVarType t2 = do
@@ -87,6 +95,30 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 			Consistency t11 t21,
 			Equality t1 (SumType t11 t12)]
 		unifyConstraints types (constraints ++ cs) (counter+2)
+	-- U ((t1 ~C <li:ti>) : cs), t1 ∉ Vars(ti)
+	-- => U ((t1i ~C ti, t1 =C <li:ti>) : cs)
+	| isVarType t1 && isVariantType t2 && (not $ belongs t1 t2) = do
+		-- retrieve type
+		let VariantType list = t2
+		-- number of alternatives
+		let n = length list
+		-- create new type variables
+		let typeVars = map newTypeVar [counter..counter+n]
+		-- get labels and types from variant type
+		let (labels, types') = fromVariant t2
+		-- create constraints between new type variables and existing types
+		let cs = map
+			(\x -> let
+				-- get var
+				var = fst x
+				-- get type
+				typ = snd x
+				in (Consistency var typ))
+			$ zip typeVars types'
+		-- create variant type with type variables
+		let variantVarType = zip labels typeVars
+		let constraints = [Equality t1 $ VariantType variantVarType]
+		unifyConstraints types (cs ++ constraints) (counter+n)
 	-- if no constraint matches, then throw error
 	| otherwise = throwError $
 		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not consistent!!"
@@ -116,6 +148,14 @@ unifyConstraints types ((Equality t1 t2) : cs) counter
 		let	(SumType t11 t12) = t1
 		let (SumType t21 t22) = t2
 		let constraints = [Equality t12 t22, Equality t11 t21]
+		unifyConstraints types (constraints ++ cs) counter
+	-- U ((<l1i:T1i> =C <l2i:T2i>) : cs)
+	-- => U
+	| isVariantType t1 && isVariantType t2 && compareLabels t1 t2 = do
+		let (_, types1) = fromVariant t1
+		let (_, types2) = fromVariant t2
+		let constraints =
+			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 =C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 =C t1) : cs)
@@ -149,5 +189,10 @@ belongs (VarType var) typ
 	| isSumType typ =
 		let (SumType t21 t22) = typ
 		in (belongs (VarType var) t21) || (belongs (VarType var) t22)
+	| isVariantType typ =
+		let
+			(VariantType list) = typ
+			types = map snd list
+		in any (belongs $ VarType var) types
 	| otherwise = False
 belongs _ _ = False

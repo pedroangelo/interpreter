@@ -45,8 +45,10 @@ unifyConstraints ((Equality t1 t2) : cs) counter
 	| isVariantType t1 && isVariantType t2 && compareLabels t1 t2 = do
 		let (VariantType list1) = t1
 		let (VariantType list2) = t2
+		let types1 = map snd list1
+		let types2 = map snd list2
 		let constraints =
-			map (\x -> Equality (snd $ fst x) (snd $ snd x)) $ zip list1 list2
+			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints (constraints ++ cs) counter
 	-- U ((t1 =C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 =C t1) : cs)
@@ -78,11 +80,10 @@ belongs (VarType var) typ
 	| isSumType typ =
 		let (SumType t21 t22) = typ
 		in (belongs (VarType var) t21) || (belongs (VarType var) t22)
+	| isVariantType typ =
+		let
+			(VariantType list) = typ
+			types = map snd list
+		in any (belongs $ VarType var) types
 	| otherwise = False
 belongs _ _ = False
-
--- compare labels of variant types
-compareLabels :: Type -> Type -> Bool
-compareLabels (VariantType list1) (VariantType list2) =
-	and $ map (\x -> (fst $ fst x) == (fst $ snd x)) $ zip list1 list2
-compareLabels _ _ = False

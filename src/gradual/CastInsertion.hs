@@ -198,6 +198,7 @@ insertCasts e@(TypeInformation typ (Case expr (var1, expr1) (var2, expr2))) =
 		pm' = patternMatchSum pm
 		SumType pm1 pm2 = pm'
 		j = joinType t1 t2
+		-- build casts
 		cast = Cast pm pm' expr'
 		cast1 = Cast t1 j expr1'
 		cast2 = Cast t2 j expr2'
@@ -210,6 +211,34 @@ insertCasts e@(TypeInformation typ (LeftTag expr t)) =
 -- if expression is a left tag
 insertCasts e@(TypeInformation typ (RightTag expr t)) =
 	TypeInformation t $ RightTag (insertCasts expr) t
+
+-- if expression is a variant case
+insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- insert casts in alternatives
+		alternativesCasts = map (\x -> (fst x, insertCasts $ snd x)) alternatives
+		-- build types
+		TypeInformation pm _ = expr'
+		-- get types for each alternative
+		types = map (\x -> fromTypeInformation $ snd x) alternativesCasts
+		-- get labels
+		labels = fst3 $ fromAlternatives alternatives
+		-- obtain pattern math of variant type
+		VariantType pm' = patternMatchVariant pm labels
+		-- get join type of all types from alternatives
+		j = foldl joinType (head types) (tail types)
+		-- build casts
+		cast = Cast pm (VariantType pm') expr'
+		casts = map
+			(\x -> (fst $ snd x, Cast (fst x) j (snd $ snd x)))
+			$ zip types alternativesCasts
+	in TypeInformation j $ CaseVariant cast casts
+
+-- if expression is a tag
+insertCasts e@(TypeInformation typ (Tag label expr t)) =
+	TypeInformation t $ Tag label (insertCasts expr) t
 
 -- obtain pattern match type for arrow
 patternMatchArrow :: Type -> Type
@@ -225,6 +254,12 @@ patternMatchProduct e@(DynType) = ProductType DynType DynType
 patternMatchSum :: Type -> Type
 patternMatchSum e@(SumType type1 type2) = e
 patternMatchSum e@(DynType) = SumType DynType DynType
+
+-- obtain pattern match type for variant
+patternMatchVariant :: Type -> [String] -> Type
+patternMatchVariant e@(VariantType _) labels = e
+patternMatchVariant e@(DynType) labels =
+	VariantType $ map (\x -> (x, DynType)) labels
 
 -- obtain join of types
 joinType :: Type -> Type -> Type
@@ -243,7 +278,19 @@ joinType (SumType t11 t12) (SumType t21 t22) =
 		t1 = joinType t11 t21
 		t2 = joinType t12 t22
 	in SumType t1 t2
+joinType (VariantType list1) (VariantType list2) =
+	let
+		list = map
+			(\x -> let
+				-- get label
+				label = fst $ fst x
+				-- get types
+				t1 = snd $ fst x
+				t2 = snd $ snd x
+				in (label, joinType t1 t2))
+			$ zip list1 list2
+	in VariantType list
 joinType t1 t2
-	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1)) &&
-	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2)) =
+	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1)) &&
+	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2)) =
 		if (isDynType t1) then t2 else t1
