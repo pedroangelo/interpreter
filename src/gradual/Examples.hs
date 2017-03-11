@@ -287,43 +287,43 @@ sums2_dyn_l = Case (LeftTag (Bool True) (SumType BoolType DynType))
 -- Variants
 
 variants1 = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", IntType)]))
-	[(("b", "l"), Application (Annotation "z" IntType $ Bool True) (Variable "l")),
-	(("i", "r"), Application (Annotation "z" IntType $ Bool False) (Variable "r"))]
+	[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
+	("i", "r", Application (Annotation "z" IntType $ Bool False) (Variable "r"))]
 
 variants1_dyn = Application
 	(Annotation "a" DynType $
 		CaseVariant (Variable "a")
-		[(("b", "l"), Application (Annotation "z" IntType $ Bool True) (Variable "l")),
-		(("i", "r"), Application (Annotation "z" IntType $ Bool True) (Variable "r"))])
+		[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
+		("i", "r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))])
 	(Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", IntType)]))
 
 variants1_dyn_lr = CaseVariant (Tag "i" (Int 1) (VariantType [("b", DynType), ("i", DynType)]))
-	[(("b", "l"), Application (Annotation "z" IntType $ Bool True) (Variable "l")),
-	(("i", "r"), Application (Annotation "z" IntType $ Bool True) (Variable "r"))]
+	[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
+	("i", "r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))]
 
 variants1_dyn_r = CaseVariant (Tag "i" (Int 1) (VariantType [("b", BoolType), ("i", DynType)]))
-	[(("b", "l"), Application (Annotation "z" IntType $ Bool True) (Variable "l")),
-	(("i", "r"), Application (Annotation "z" IntType $ Bool True) (Variable "r"))]
+	[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
+	("i", "r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))]
 
 variants2 = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", IntType)]))
-			[(("b", "l"), Application not' (Variable "l")),
-			(("i", "r"), Application isZero (Variable "r"))]
+			[("b", "l", Application not' (Variable "l")),
+			("i", "r", Application isZero (Variable "r"))]
 
 variants2_1_dyn = Application
 	(Annotation "a" DynType $
 		CaseVariant (Variable "a")
-			[(("b", "l"), Application not' (Variable "l")),
-			(("i", "r"), Application isZero (Variable "r"))])
+			[("b", "l", Application not' (Variable "l")),
+			("i", "r", Application isZero (Variable "r"))])
 	(Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", IntType)]))
 
 variants2_dyn = CaseVariant (Tag "b" (Bool True) (VariantType [("b", DynType), ("i", DynType)]))
-	[(("b", "l"), Application not' (Variable "l")),
-	(("i", "r"), Application isZero (Variable "r"))]
+	[("b", "l", Application not' (Variable "l")),
+	("i", "r", Application isZero (Variable "r"))]
 
 variants2_dyn_r = CaseVariant (Tag "i" (Int 0) (VariantType [("b", DynType), ("i", IntType)]))
-	[(("b", "l"), Application not' (Variable "l")),
-	(("i", "r"), Application isZero (Variable "r"))]
+	[("b", "l", Application not' (Variable "l")),
+	("i", "r", Application isZero (Variable "r"))]
 
 variants2_dyn_l = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", DynType)]))
-	[(("b", "l"), Application not' (Variable "l")),
-	(("i", "r"), Application isZero (Variable "r"))]
+	[("b", "l", Application not' (Variable "l")),
+	("i", "r", Application isZero (Variable "r"))]

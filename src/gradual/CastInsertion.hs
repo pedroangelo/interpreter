@@ -218,11 +218,11 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
 		-- insert casts
 		expr' = insertCasts expr
 		-- insert casts in alternatives
-		alternativesCasts = map (\x -> (fst x, insertCasts $ snd x)) alternatives
+		alternativesCasts = map (\x -> (fst3 x, snd3 x, insertCasts $ trd3 x)) alternatives
 		-- build types
 		TypeInformation pm _ = expr'
 		-- get types for each alternative
-		types = map (\x -> fromTypeInformation $ snd x) alternativesCasts
+		types = map (\x -> fromTypeInformation $ trd3 x) alternativesCasts
 		-- get labels
 		labels = fst3 $ fromAlternatives alternatives
 		-- obtain pattern math of variant type
@@ -232,7 +232,7 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
 		-- build casts
 		cast = Cast pm (VariantType pm') expr'
 		casts = map
-			(\x -> (fst $ snd x, Cast (fst x) j (snd $ snd x)))
+			(\x -> (fst3 $ snd x, snd3 $ snd x, Cast (fst x) j (trd3 $ snd x)))
 			$ zip types alternativesCasts
 	in TypeInformation j $ CaseVariant cast casts
 

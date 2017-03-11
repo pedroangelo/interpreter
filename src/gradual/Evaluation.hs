@@ -432,8 +432,8 @@ evaluate e@(CaseVariant expr alternatives)
 		let
 			(Tag label expr' typ) = expr
 			-- obtain correct alternative according to label
-			((_, var), alternative) =
-				head $ filter (\x -> label == (fst $ fst x)) alternatives
+			(_, var, alternative) =
+				head $ filter (\x -> label == (fst3 x)) alternatives
 		in evaluationStyle $ substitute (var, expr') alternative
 	-- C-CaseVariant - simulate casts on data types
 	| isCast expr =
@@ -450,11 +450,11 @@ evaluate e@(CaseVariant expr alternatives)
 					t' = fst $ fst x
 					t'' = snd $ fst x
 					-- get label, var and expr
-					label = fst $ fst $ snd x
-					var = snd $ fst $ snd x
-					expr'' = snd $ snd x
+					label = fst3 $ snd x
+					var = snd3 $ snd x
+					expr'' = trd3 $ snd x
 					cast = Cast t' t'' $ Variable var
-					in ((label, var), substitute (var, cast) expr''))
+					in (label, var, substitute (var, cast) expr''))
 				list'
 		in evaluationStyle $ CaseVariant expr' casts
 

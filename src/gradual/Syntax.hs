@@ -59,7 +59,7 @@ data Expression
 	deriving (Show, Eq)
 
 type Alternatives = [Alternative]
-type Alternative = ((Label, Var), Expression)
+type Alternative = (Label, Var, Expression)
 
 -- MAPPING
 
@@ -93,7 +93,9 @@ mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
-mapExpression f e@(CaseVariant expr alternatives) =	f (CaseVariant (mapExpression f expr) (map (\x -> (fst x, mapExpression f (snd x))) alternatives))
+mapExpression f e@(CaseVariant expr alternatives) =
+	f (CaseVariant (mapExpression f expr)
+	(map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
 mapExpression f e@(Tag label expr typ) = f (Tag label (mapExpression f expr) typ)
 mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
 mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
@@ -346,8 +348,7 @@ fromTypeInformation (TypeInformation typ _) = typ
 
 -- get label, var and expr from alternatives
 fromAlternatives :: Alternatives -> ([Label], [Var], [Expression])
-fromAlternatives alternatives =
-	unzip3 $ map (\x -> (fst $ fst x, snd $ fst x, snd x)) alternatives
+fromAlternatives = unzip3
 
 -- SUBSTITUTIONS
 type ExpressionSubstitution = (String, Expression)
@@ -479,9 +480,9 @@ substituteCase s@(old, new) e@(var, expr)
 
 -- substitution for case expressions
 substituteCaseVariant :: ExpressionSubstitution -> Alternative -> Alternative
-substituteCaseVariant s@(old, new) e@((label, var), expr)
+substituteCaseVariant s@(old, new) e@(label, var, expr)
 	| old == var = e
-	| otherwise = ((label, var), substitute s expr)
+	| otherwise = (label, var, substitute s expr)
 
 -- substitute types in annotations and type information in all terms
 -- using the substitutions generated during constraint unification

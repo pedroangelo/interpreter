@@ -371,9 +371,9 @@ generateConstraints (ctx, CaseVariant expr alternatives) = do
 	let typeAssignments = map
 		(\x -> let
 			-- get type variable from alternative
-			var = snd $ fst $ snd x
+			var = snd3 $ snd x
 			-- get expression from alternative
-			expr' = snd $ snd x
+			expr' = trd3 $ snd x
 			-- get type from types
 			typ = fst x
 			-- add to context variable with new type
@@ -388,12 +388,12 @@ generateConstraints (ctx, CaseVariant expr alternatives) = do
 	let typedAlternatives = map
 		(\x -> let
 			-- get label
-			label = fst $ fst $ fst x
+			label = fst3 $ fst x
 			-- get var
-			var = snd $ fst $ fst x
+			var = snd3 $ fst x
 			-- get typed expression
 			expr_typed = snd x
-			in ((label, var), expr_typed))
+			in (label, var, expr_typed))
 		$ zip alternatives exprs_typed
 	-- build typed expression
 	let typedExpr = TypeInformation t3 (CaseVariant expr_typed typedAlternatives)
