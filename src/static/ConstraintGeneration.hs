@@ -212,9 +212,9 @@ generateConstraints (ctx, First expr) = do
 	let newVar1 = newTypeVar i
 	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
-	let typeAssignment1 = (ctx, expr)
+	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
-	(t, constraints) <- generateConstraints typeAssignment1
+	(t, constraints) <- generateConstraints typeAssignment
 	-- return type along with all the constraints
 	return (newVar1, constraints ++ [Equality t (ProductType newVar1 newVar2)])
 
@@ -227,11 +227,64 @@ generateConstraints (ctx, Second expr) = do
 	let newVar1 = newTypeVar i
 	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
-	let typeAssignment1 = (ctx, expr)
+	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
-	(t, constraints) <- generateConstraints typeAssignment1
+	(t, constraints) <- generateConstraints typeAssignment
 	-- return type along with all the constraints
 	return (newVar2, constraints ++ [Equality t (ProductType newVar1 newVar2)])
+
+-- (Crecord) if expression is a record
+generateConstraints (ctx, Record records) = do
+	-- get labels and types
+	let (labels, exprs) = fromRecords records
+	-- build for each expression a type assignment
+	let typeAssignments = map (\x -> (ctx, x)) exprs
+	-- obtain type and constraints for both expressions
+	results <- mapM generateConstraints typeAssignments
+	-- get resulting types and constraints
+	let (types, cs) = unzip results
+	-- build type
+	let ts = zip labels types
+	-- return type along with all the constraints
+	return (RecordType ts, concat cs)
+
+-- (Cfst) if expression is a first projection
+generateConstraints (ctx, Projection label expr typ) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints) <- generateConstraints typeAssignment
+	-- if expression is annotated with a record type
+	if isRecordType typ then do
+		-- retrieve type
+		let RecordType records = typ
+		-- obtain type according to tag
+		let tagType = lookup label records
+		-- if type doesn't exist in record
+		if isNothing tagType then do
+			let cs = [Equality typ (RecordType [(label, UnitType)])]
+			return (UnitType, constraints ++ cs)
+		else do
+			-- get labels
+			let (labels, _) = fromRecordType typ
+			-- number of records
+			let n = length records
+			-- counter for variable creation
+			i <- get
+			put (i+n+1)
+			-- create new type variables
+			let typeVars = map newTypeVar [i..i+n]
+			-- create record type of type variables
+			let listVar = zip labels typeVars
+			-- let type of expr be a type variable according to the label
+			let finalType = fromJust $ lookup label listVar
+			-- return type along with all the constraints
+			return (finalType, constraints ++
+				[Equality (RecordType listVar) t, Equality typ t])
+	-- if expression is annotated with a wrong type
+	else do
+		let typ' = RecordType [(label, UnitType)]
+		return (UnitType, constraints ++ [Equality typ typ'])
 
 -- (Ccase) if expression is a case
 generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do

@@ -33,6 +33,14 @@ unifyConstraints ((Equality t1 t2) : cs) counter
 		let (ProductType t21 t22) = t2
 		let constraints = [Equality t12 t22, Equality t11 t21]
 		unifyConstraints (constraints ++ cs) counter
+	-- U (({l1i:T1i} =C {l2i:T2i}) : cs)
+	-- => U
+	| isRecordType t1 && isRecordType t2 && compareLabels t1 t2 = do
+		let (_, types1) = fromRecordType t1
+		let (_, types2) = fromRecordType t2
+		let constraints =
+			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
+		unifyConstraints (constraints ++ cs) counter
 	-- U ((t11 + t12 =C t21 + t22) : cs)
 	-- => U ((t12 =C t22, t11 =C t21) : cs)
 	| isSumType t1 && isSumType t2 = do
@@ -43,10 +51,8 @@ unifyConstraints ((Equality t1 t2) : cs) counter
 	-- U ((<l1i:T1i> =C <l2i:T2i>) : cs)
 	-- => U
 	| isVariantType t1 && isVariantType t2 && compareLabels t1 t2 = do
-		let (VariantType list1) = t1
-		let (VariantType list2) = t2
-		let types1 = map snd list1
-		let types2 = map snd list2
+		let (_, types1) = fromVariantType t1
+		let (_, types2) = fromVariantType t2
 		let constraints =
 			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints (constraints ++ cs) counter
@@ -77,13 +83,15 @@ belongs (VarType var) typ
 	| isProductType typ =
 		let (ProductType t21 t22) = typ
 		in (belongs (VarType var) t21) || (belongs (VarType var) t22)
+	| isRecordType typ =
+		let (_, types) = fromRecordType typ
+		in any (belongs $ VarType var) types
+	| otherwise = False
 	| isSumType typ =
 		let (SumType t21 t22) = typ
 		in (belongs (VarType var) t21) || (belongs (VarType var) t22)
 	| isVariantType typ =
-		let
-			(VariantType list) = typ
-			types = map snd list
+		let (_, types) = fromVariantType typ
 		in any (belongs $ VarType var) types
 	| otherwise = False
 belongs _ _ = False

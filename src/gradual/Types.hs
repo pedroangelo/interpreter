@@ -119,8 +119,8 @@ sameGround t1 t2 = getGroundType t1 == getGroundType t2
 compareLabels :: Type -> Type -> Bool
 compareLabels t1@(VariantType list1) t2@(VariantType list2) =
 	let
-		(labels1, _) = fromVariant t1
-		(labels2, _) = fromVariant t2
+		(labels1, _) = fromVariantType t1
+		(labels2, _) = fromVariantType t2
 	in labels1 == labels2
 compareLabels _ _ = False
 
@@ -138,8 +138,8 @@ getGroundType (SumType _ _) = SumType DynType DynType
 getGroundType (VariantType ts) = VariantType $ map (\x -> (fst x, DynType)) ts
 
 -- get label and type from variant type
-fromVariant :: Type -> ([Label], [Type])
-fromVariant (VariantType list) = unzip list
+fromVariantType :: Type -> ([Label], [Type])
+fromVariantType (VariantType list) = unzip list
 
 -- SUBSTITUTIONS
 type TypeSubstitutions = [TypeSubstitution]

@@ -327,3 +327,11 @@ variants2_dyn_r = CaseVariant (Tag "i" (Int 0) (VariantType [("b", DynType), ("i
 variants2_dyn_l = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", DynType)]))
 	[("b", "l", Application not' (Variable "l")),
 	("i", "r", Application isZero (Variable "r"))]
+
+variants3 = Application
+	(CaseVariant (Tag "ib" (isZero) (VariantType [("ib", ArrowType IntType BoolType)]))
+		[("ib", "l", Abstraction "x" $ Application (Variable "l") (Variable "x"))])
+	(Int 1)
+
+variants3_dyn = CaseVariant (Tag "ib" (isZero) (VariantType [("ib", DynType)]))
+	[("ib", "l", Abstraction "x" $ Application (Variable "l") (Variable "x"))]

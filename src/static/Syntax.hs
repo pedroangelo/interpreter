@@ -43,6 +43,9 @@ data Expression
 	| Pair Expression Expression
 	| First Expression
 	| Second Expression
+	-- Records
+	| Record Records
+	| Projection Label Expression Type
 	-- Sums
 	| Case Expression (Var, Expression) (Var, Expression)
 	| LeftTag Expression Type
@@ -57,6 +60,9 @@ data Expression
 
 type Alternatives = [Alternative]
 type Alternative = (Label, Var, Expression)
+
+type Records = [Record]
+type Record = (Label, Expression)
 
 -- MAPPING
 
@@ -87,6 +93,10 @@ mapExpression f e@(Unit) = f e
 mapExpression f e@(Pair expr1 expr2) = f (Pair (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(First expr) = f (First (mapExpression f expr))
 mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
+mapExpression f e@(Record records) =
+	f (Record
+	(map (\x -> (fst x, mapExpression f (snd x))) records))
+mapExpression f e@(Projection label expr typ) = f (Projection label (mapExpression f expr) typ)
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
@@ -225,6 +235,16 @@ isSecond :: Expression -> Bool
 isSecond (Second _) = True
 isSecond _ = False
 
+-- check if is a record
+isRecord :: Expression -> Bool
+isRecord (Record _) = True
+isRecord _ = False
+
+-- check if is a projection
+isProjection :: Expression -> Bool
+isProjection (Projection _ _ _) = True
+isProjection _ = False
+
 -- check if is a case
 isCase :: Expression -> Bool
 isCase (Case _ _ _) = True
@@ -269,6 +289,7 @@ isValue e =
 	isInt e ||
 	isUnit e ||
 	(isPair e && isValuePair e) ||
+	(isRecord e && isValueRecord e) ||
 	((isLeftTag e || isRightTag e) && isValueSums e) ||
 	(isTag e && isValueVariants e) ||
 	isFold e
@@ -277,6 +298,11 @@ isValue e =
 isValuePair :: Expression -> Bool
 isValuePair (Pair expr1 expr2) = isValue expr1 && isValue expr2
 isValuePair _ = False
+
+-- check if record is a value
+isValueRecord :: Expression -> Bool
+isValueRecord (Record records) = all (\x -> isValue $ snd x) records
+isValueRecord _ = False
 
 -- check if tag is a value
 isValueSums :: Expression -> Bool
@@ -321,6 +347,13 @@ fromOperator (LesserThan expr1 expr2) = (expr1, expr2)
 fromOperator (GreaterThan expr1 expr2) = (expr1, expr2)
 fromOperator (LesserEqualTo expr1 expr2) = (expr1, expr2)
 fromOperator (GreaterEqualTo expr1 expr2) = (expr1, expr2)
+
+-- get label, var and expr from alternatives
+fromAlternatives :: Alternatives -> ([Label], [Var], [Expression])
+fromAlternatives = unzip3
+
+fromRecords :: Records -> ([Label], [Expression])
+fromRecords = unzip
 
 -- SUBSTITUTIONS
 type ExpressionSubstitution = (String, Expression)
@@ -419,6 +452,12 @@ substitute s@(old, new) e@(First expr) =
 substitute s@(old, new) e@(Second expr) =
 	Second (substitute s expr)
 
+-- if the expression is a record or a projection
+substitute s@(old, new) e@(Record records) =
+	Record (map (substituteRecord s) records)
+substitute s@(old, new) e@(Projection label expr typ) =
+	Projection label (substitute s expr) typ
+
 -- if the expression is a case or tag
 substitute s@(old, new) e@(Case expr e1@(var1, expr1) e2@(var2, expr2)) =
 	Case (substitute s expr) (substituteCase s e1) (substituteCase s e2)
@@ -450,6 +489,11 @@ substituteCaseVariant :: ExpressionSubstitution -> Alternative -> Alternative
 substituteCaseVariant s@(old, new) e@(label, var, expr)
 	| old == var = e
 	| otherwise = (label, var, substitute s expr)
+
+-- substitution for records
+substituteRecord :: ExpressionSubstitution -> Record -> Record
+substituteRecord s@(old, new) e@(label, expr) =
+	(label, substitute s expr)
 
 -- HELPER FUNCTIONS
 

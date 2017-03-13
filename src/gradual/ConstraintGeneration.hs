@@ -427,7 +427,7 @@ generateConstraints (ctx, Tag label expr typ) = do
 			-- create new type variables
 			let typeVars = map newTypeVar [i..i+n]
 			-- get labels
-			let (labels, _) = fromVariant typ
+			let (labels, _) = fromVariantType typ
 			-- create list
 			let listVars = zip labels typeVars
 			-- build typed expression
@@ -613,8 +613,8 @@ variantComponents labels t
 		return (typeVars, [Equality t (VariantType list)])
 	-- if t is variant type
 	| isVariantType t = do
-		let (_, types) = fromVariant t
-		-- return as type t2
+		let (_, types) = fromVariantType t
+		-- return types
 		return (types, [])
 	-- if t is dynamic type
 	| isDynType t = do

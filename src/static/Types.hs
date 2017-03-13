@@ -17,6 +17,7 @@ data Type
 	| ForAll Var Type
 	| UnitType
 	| ProductType Type Type
+	| RecordType [(Label, Type)]
 	| SumType Type Type
 	| VariantType [(Label, Type)]
 	| Mu Var Type
@@ -42,6 +43,7 @@ mapType f t@(BoolType) = f t
 mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
 mapType f t@(UnitType) = f t
 mapType f t@(ProductType t1 t2) = f (ProductType (mapType f t1) (mapType f t2))
+mapType f t@(RecordType ts) = f (RecordType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
 mapType f t@(VariantType ts) = f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 mapType f t@(Mu var t') = f (Mu var $ mapType f t')
@@ -83,6 +85,11 @@ isProductType :: Type -> Bool
 isProductType (ProductType _ _) = True
 isProductType _ = False
 
+-- check if is record type
+isRecordType :: Type -> Bool
+isRecordType (RecordType _) = True
+isRecordType _ = False
+
 -- check if is sum type
 isSumType :: Type -> Bool
 isSumType (SumType _ _) = True
@@ -100,9 +107,27 @@ isMuType _ = False
 
 -- compare labels of variant types
 compareLabels :: Type -> Type -> Bool
-compareLabels (VariantType list1) (VariantType list2) =
-	and $ map (\x -> (fst $ fst x) == (fst $ snd x)) $ zip list1 list2
+compareLabels t1@(VariantType list1) t2@(VariantType list2) =
+	let
+		(labels1, _) = fromVariantType t1
+		(labels2, _) = fromVariantType t2
+	in labels1 == labels2
+compareLabels t1@(RecordType list1) t2@(RecordType list2) =
+	let
+		(labels1, _) = fromRecordType t1
+		(labels2, _) = fromRecordType t2
+	in labels1 == labels2
 compareLabels _ _ = False
+
+-- PROJECTIONS
+
+-- get label and type from variant type
+fromVariantType :: Type -> ([Label], [Type])
+fromVariantType (VariantType list) = unzip list
+
+-- get label and type from record type
+fromRecordType :: Type -> ([Label], [Type])
+fromRecordType (RecordType list) = unzip list
 
 -- SUBSTITUTIONS
 type TypeSubstitutions = [TypeSubstitution]
@@ -120,6 +145,8 @@ substituteType s@(old, new) t@(BoolType) = t
 substituteType s@(old, new) t@(UnitType) = t
 substituteType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (substituteType s t1) (substituteType s t2)
+substituteType s@(old, new) t@(RecordType ts) =
+	RecordType $ map (\x -> (fst x, substituteType s $ snd x)) ts
 substituteType s@(old, new) t@(SumType t1 t2) =
 	SumType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(VariantType ts) =
@@ -140,6 +167,8 @@ foldType s@(old, new) t@(BoolType) = t
 foldType s@(old, new) t@(UnitType) = t
 foldType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (foldType s t1) (foldType s t2)
+foldType s@(old, new) t@(RecordType ts) =
+	RecordType $ map (\x -> (fst x, foldType s $ snd x)) ts
 foldType s@(old, new) t@(SumType t1 t2) =
 	SumType (foldType s t1) (foldType s t2)
 foldType s@(old, new) t@(VariantType ts) =
@@ -179,6 +208,13 @@ countTypeVariable t@(ProductType t1 t2) =
 		(exclude1, include1) = countTypeVariable t1
 		(exclude2, include2) = countTypeVariable t2
 	in (exclude1 ++ exclude2, include1 ++ include2)
+countTypeVariable t@(RecordType ts) =
+	let
+		result = map (countTypeVariable . snd) ts
+		(exclude, include) = foldr1 (\x -> \y ->
+			(nub $ fst x ++ fst y,
+			nub $ snd x ++ snd y)) result
+	in (exclude, include)
 countTypeVariable t@(SumType t1 t2) =
 	let
 		(exclude1, include1) = countTypeVariable t1

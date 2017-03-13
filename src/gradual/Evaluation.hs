@@ -440,7 +440,7 @@ evaluate e@(CaseVariant expr alternatives)
 		let
 			(Cast t1 t2 expr') = expr
 			-- get types from variant
-			list = zip (snd $ fromVariant t1) (snd $ fromVariant t2)
+			list = zip (snd $ fromVariantType t1) (snd $ fromVariantType t2)
 			-- build list with types from each alternative
 			list' = zip list alternatives
 			-- insert casts in each alternative

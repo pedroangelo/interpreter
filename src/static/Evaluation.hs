@@ -293,6 +293,28 @@ evaluate e@(Second expr)
 		let (Pair expr1 expr2) = expr
 			in evaluate $ expr2
 
+-- if expression is a record
+evaluate e@(Record records)
+	-- reduce expressions
+	| any (not . isValue) exprs =
+		let exprs' = map evaluate exprs
+		in Record $ zip labels exprs'
+	| otherwise = e
+	where (labels, exprs) = unzip records
+
+-- if expression is a projection
+evaluate e@(Projection label expr typ)
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluate $ Projection label v typ
+	-- project element of record
+	| isRecord expr =
+		let
+			Record list = expr
+			Just expr' = lookup label list
+		in evaluate expr'
+
 -- if expression is a case
 evaluate e@(Case expr (var1, expr1) (var2, expr2))
 	-- reduce expr
