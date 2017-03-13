@@ -301,36 +301,32 @@ generateConstraints (ctx, CaseVariant expr alternatives) = do
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints) <- generateConstraints typeAssignment
-	-- build list of alternatives with indexes
-	let indexedAlternatives = zip [0..] alternatives
 	-- build for each expression a type assignment
 	let typeAssignments = map
 		(\x -> let
 			-- get type variable from alternative
-			var = snd $ fst $ snd x
+			var = snd3 $ snd x
 			-- get expression from alternative
-			expr' = snd $ snd x
-			-- get index
-			index = fst x
+			expr' = trd3 $ snd x
+			-- get type variable
+			typ = fst x
 			-- add to context variable with new type
-			in ((var, typeVars !! index) : ctx, expr'))
-		indexedAlternatives
+			in ((var, typ) : ctx, expr'))
+		$ zip typeVars alternatives
 	-- obtain type and constraints for both expressions
 	results <- mapM generateConstraints typeAssignments
-	-- get resulting types
-	let ts = map fst results
-	-- get resulting constraints
-	let cs = map snd results
+	-- get resulting types and constraints
+	let (ts, cs) = unzip results
 	-- build type consisting of new type variables
 	let list = map
 		(\x -> let
 			-- get label from alternatives
-			label = fst $ fst $ snd x
-			-- get index
-			index = fst x
+			label = fst3 $ snd x
+			-- get type variable
+			typ = fst x
 			-- build variant type
-			in (label, typeVars !! index))
-		indexedAlternatives
+			in (label, typ))
+		$ zip typeVars alternatives
 	-- type of expr must be variant type
 	let cs1 = [Equality t (VariantType list)]
 	-- resulting types from each alternative must be equal

@@ -334,10 +334,10 @@ evaluate e@(CaseVariant expr alternatives)
 	| isTag expr =
 		let
 			(Tag label expr' _) = expr
-			-- search alternatives for tag
-			chosen = head $ filter (\x -> (fst $ fst x) == label) alternatives
-			((_, var), expr'') = chosen
-		in evaluate $ substitute (var, expr') expr''
+			-- obtain correct alternative according to label
+			(_, var, alternative) =
+				head $ filter (\x -> label == (fst3 x)) alternatives
+		in evaluate $ substitute (var, expr') alternative
 
 -- if expressions is a tag
 evaluate e@(Tag label expr typ)

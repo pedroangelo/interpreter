@@ -10,7 +10,6 @@ import Types
 import Control.Monad.State
 import Control.Monad.Except
 import Data.Maybe
-import Data.Char
 
 -- generate constraint set and type given a context and expression
 generateConstraints :: (Context, Expression)

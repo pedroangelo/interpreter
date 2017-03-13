@@ -430,7 +430,7 @@ evaluate e@(CaseVariant expr alternatives)
 	-- if is tag
 	| isTag expr =
 		let
-			(Tag label expr' typ) = expr
+			(Tag label expr' _) = expr
 			-- obtain correct alternative according to label
 			(_, var, alternative) =
 				head $ filter (\x -> label == (fst3 x)) alternatives
