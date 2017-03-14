@@ -107,27 +107,27 @@ isMuType _ = False
 
 -- compare labels of variant types
 compareLabels :: Type -> Type -> Bool
-compareLabels t1@(VariantType list1) t2@(VariantType list2) =
-	let
-		(labels1, _) = fromVariantType t1
-		(labels2, _) = fromVariantType t2
-	in labels1 == labels2
 compareLabels t1@(RecordType list1) t2@(RecordType list2) =
 	let
 		(labels1, _) = fromRecordType t1
 		(labels2, _) = fromRecordType t2
 	in labels1 == labels2
+compareLabels t1@(VariantType list1) t2@(VariantType list2) =
+	let
+		(labels1, _) = fromVariantType t1
+		(labels2, _) = fromVariantType t2
+	in labels1 == labels2
 compareLabels _ _ = False
 
 -- PROJECTIONS
 
--- get label and type from variant type
-fromVariantType :: Type -> ([Label], [Type])
-fromVariantType (VariantType list) = unzip list
-
 -- get label and type from record type
 fromRecordType :: Type -> ([Label], [Type])
 fromRecordType (RecordType list) = unzip list
+
+-- get label and type from variant type
+fromVariantType :: Type -> ([Label], [Type])
+fromVariantType (VariantType list) = unzip list
 
 -- SUBSTITUTIONS
 type TypeSubstitutions = [TypeSubstitution]

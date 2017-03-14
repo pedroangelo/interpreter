@@ -6,6 +6,9 @@ module CastInsertion (
 import Syntax
 import Types
 
+-- Imports
+import Data.Maybe
+
 -- insert casts in the expression
 insertCasts :: Expression -> Expression
 
@@ -184,6 +187,33 @@ insertCasts e@(TypeInformation typ (Second expr)) =
 		cast = Cast pm pm' expr'
 	in TypeInformation t2 $ Second cast
 
+-- if expression is a record
+insertCasts e@(TypeInformation typ (Record records)) =
+	let
+		-- insert casts in records
+		recordsCasts = map (\x -> (fst x, insertCasts $ snd x)) records
+		-- get labels
+		(labels, exprs) = fromRecords recordsCasts
+		-- get types
+		types = map fromTypeInformation exprs
+	in TypeInformation (RecordType $ zip labels types) $ Record recordsCasts
+
+-- if expression is a projection
+insertCasts e@(TypeInformation _ (Projection label expr typ)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- get labels
+		(labels, _) = fromRecordType typ
+		-- buid types
+		TypeInformation pm _ = expr'
+		RecordType pm' = patternMatchRecords pm labels
+		-- build casts
+		cast = Cast pm (RecordType pm') expr'
+		-- get type
+		t = fromJust $ lookup label pm'
+	in TypeInformation t $ Projection label cast typ
+
 -- if expression is a case
 insertCasts e@(TypeInformation typ (Case expr (var1, expr1) (var2, expr2))) =
 	let
@@ -250,6 +280,12 @@ patternMatchProduct :: Type -> Type
 patternMatchProduct e@(ProductType type1 type2) = e
 patternMatchProduct e@(DynType) = ProductType DynType DynType
 
+-- obtain pattern match type for records
+patternMatchRecords :: Type -> [String] -> Type
+patternMatchRecords e@(RecordType _) labels = e
+patternMatchRecords e@(DynType) labels =
+	RecordType $ map (\x -> (x, DynType)) labels
+
 -- obtain pattern match type for sum
 patternMatchSum :: Type -> Type
 patternMatchSum e@(SumType type1 type2) = e
@@ -273,6 +309,18 @@ joinType (ProductType t11 t12) (ProductType t21 t22) =
 		t1 = joinType t11 t21
 		t2 = joinType t12 t22
 	in ProductType t1 t2
+joinType (RecordType list1) (RecordType list2) =
+	let
+		list = map
+			(\x -> let
+				-- get label
+				label = fst $ fst x
+				-- get types
+				t1 = snd $ fst x
+				t2 = snd $ snd x
+				in (label, joinType t1 t2))
+			$ zip list1 list2
+	in RecordType list
 joinType (SumType t11 t12) (SumType t21 t22) =
 	let
 		t1 = joinType t11 t21
@@ -291,6 +339,6 @@ joinType (VariantType list1) (VariantType list2) =
 			$ zip list1 list2
 	in VariantType list
 joinType t1 t2
-	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1)) &&
-	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2)) =
+	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1)) &&
+	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2)) =
 		if (isDynType t1) then t2 else t1

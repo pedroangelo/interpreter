@@ -18,6 +18,7 @@ data Type
 	| ForAll Var Type
 	| UnitType
 	| ProductType Type Type
+	| RecordType [(Label, Type)]
 	| SumType Type Type
 	| VariantType [(Label, Type)]
 	deriving (Show, Eq)
@@ -44,6 +45,7 @@ mapType f t@(DynType) = f t
 mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
 mapType f t@(UnitType) = f t
 mapType f t@(ProductType t1 t2) = f (ProductType (mapType f t1) (mapType f t2))
+mapType f t@(RecordType ts) = f (RecordType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
 mapType f t@(VariantType ts) = f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 
@@ -89,6 +91,11 @@ isProductType :: Type -> Bool
 isProductType (ProductType _ _) = True
 isProductType _ = False
 
+-- check if is record type
+isRecordType :: Type -> Bool
+isRecordType (RecordType _) = True
+isRecordType _ = False
+
 -- check if is sum type
 isSumType :: Type -> Bool
 isSumType (SumType _ _) = True
@@ -107,6 +114,7 @@ isGroundType BoolType = True
 isGroundType (ForAll _ DynType) = True
 isGroundType (UnitType) = True
 isGroundType (ProductType DynType DynType) = True
+isGroundType (RecordType ts) = all (\x -> isDynType $ snd x) ts
 isGroundType (SumType DynType DynType) = True
 isGroundType (VariantType ts) = all (\x -> isDynType $ snd x) ts
 isGroundType _ = False
@@ -117,6 +125,11 @@ sameGround t1 t2 = getGroundType t1 == getGroundType t2
 
 -- compare labels of variant types
 compareLabels :: Type -> Type -> Bool
+compareLabels t1@(RecordType list1) t2@(RecordType list2) =
+	let
+		(labels1, _) = fromRecordType t1
+		(labels2, _) = fromRecordType t2
+	in labels1 == labels2
 compareLabels t1@(VariantType list1) t2@(VariantType list2) =
 	let
 		(labels1, _) = fromVariantType t1
@@ -134,8 +147,13 @@ getGroundType BoolType = BoolType
 getGroundType (ForAll _ _) = ForAll "" DynType
 getGroundType (UnitType) = UnitType
 getGroundType (ProductType _ _) = ProductType DynType DynType
+getGroundType (RecordType ts) = RecordType $ map (\x -> (fst x, DynType)) ts
 getGroundType (SumType _ _) = SumType DynType DynType
 getGroundType (VariantType ts) = VariantType $ map (\x -> (fst x, DynType)) ts
+
+-- get label and type from record type
+fromRecordType :: Type -> ([Label], [Type])
+fromRecordType (RecordType list) = unzip list
 
 -- get label and type from variant type
 fromVariantType :: Type -> ([Label], [Type])
@@ -160,6 +178,8 @@ substituteType s@(old, new) t@(ForAll var t') =
 substituteType s@(old, new) t@(UnitType) = t
 substituteType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (substituteType s t1) (substituteType s t2)
+substituteType s@(old, new) t@(RecordType ts) =
+	RecordType $ map (\x -> (fst x, substituteType s $ snd x)) ts
 substituteType s@(old, new) t@(SumType t1 t2) =
 	SumType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(VariantType ts) =
@@ -189,6 +209,7 @@ countTypeVariable t@(VarType var) = var : []
 countTypeVariable t@(ArrowType t1 t2) = countTypeVariable t1 ++ countTypeVariable t2
 countTypeVariable t@(ForAll var t') = countTypeVariable t'
 countTypeVariable t@(ProductType t1 t2) = countTypeVariable t1 ++ countTypeVariable t2
+countTypeVariable t@(RecordType ts) = concat $ map (countTypeVariable . snd) ts
 countTypeVariable t@(SumType t1 t2) = countTypeVariable t1 ++ countTypeVariable t2
 countTypeVariable t@(VariantType ts) = concat $ map (countTypeVariable . snd) ts
 countTypeVariable t = []
@@ -222,6 +243,11 @@ retrieveType f t@(ProductType t1 t2) =
 		t2' = retrieveType f t2
 		t' = if f t then [t] else []
 	in t' ++ t1' ++ t2'
+retrieveType f t@(RecordType list) =
+	let
+		list' = map (\x -> retrieveType f (snd x)) list
+		t' = if f t then [t] else []
+	in t' ++ (concat list')
 retrieveType f t@(SumType t1 t2) =
 	let
 		t1' = retrieveType f t1

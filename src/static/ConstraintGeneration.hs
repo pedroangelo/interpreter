@@ -248,7 +248,7 @@ generateConstraints (ctx, Record records) = do
 	-- return type along with all the constraints
 	return (RecordType ts, concat cs)
 
--- (Cfst) if expression is a first projection
+-- (Cprojection) if expression is a first projection
 generateConstraints (ctx, Projection label expr typ) = do
 	-- build type assignment
 	let typeAssignment = (ctx, expr)

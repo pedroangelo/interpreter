@@ -300,7 +300,7 @@ evaluate e@(Record records)
 		let exprs' = map evaluate exprs
 		in Record $ zip labels exprs'
 	| otherwise = e
-	where (labels, exprs) = unzip records
+	where (labels, exprs) = fromRecords records
 
 -- if expression is a projection
 evaluate e@(Projection label expr typ)

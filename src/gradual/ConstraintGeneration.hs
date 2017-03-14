@@ -300,6 +300,62 @@ generateConstraints (ctx, Second expr) = do
 	-- return type along with all the constraints
 	return (newVar2, constraints ++ [Consistency t (ProductType newVar1 newVar2)], typedExpr)
 
+-- (Crecord) if expression is a record
+generateConstraints (ctx, Record records) = do
+	-- get labels and types
+	let (labels, exprs) = fromRecords records
+	-- build for each expression a type assignment
+	let typeAssignments = map (\x -> (ctx, x)) exprs
+	-- obtain type and constraints for both expressions
+	results <- mapM generateConstraints typeAssignments
+	-- get resulting types and constraints
+	let (types, cs, exprs_typed) = unzip3 results
+	-- build type
+	let ts = zip labels types
+	-- build typed expression
+	let typedExpr = TypeInformation (RecordType ts) (Record $ zip labels exprs_typed)
+	-- return type along with all the constraints
+	return (RecordType ts, concat cs, typedExpr)
+
+-- (Cprojection) if expression is a first projection
+generateConstraints (ctx, Projection label expr typ) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- if expression is annotated with a record type
+	if isRecordType typ then do
+		-- retrieve type
+		let RecordType records = typ
+		-- obtain type according to tag
+		let tagType = lookup label records
+		-- if type doesn't exist in record
+		if isNothing tagType then do
+			-- build typed expression
+			let typedExpr = TypeInformation UnitType (Projection label expr_typed typ)
+			let cs = [Equality typ (RecordType [(label, UnitType)])]
+			return (UnitType, constraints ++ cs, typedExpr)
+		else do
+			-- get labels
+			let (labels, _) = fromRecordType typ
+			-- get constraints for each type in variant
+			(types, constraints') <- recordComponents labels t
+			-- create record type of type variables
+			let list = zip labels types
+			-- let type of expr be a type variable according to the label
+			let finalType = fromJust $ lookup label list
+			-- build typed expression
+			let typedExpr = TypeInformation finalType (Projection label expr_typed typ)
+			-- return type along with all the constraints
+			return (finalType, constraints ++ constraints' ++
+				[Consistency (RecordType list) typ], typedExpr)
+	-- if expression is annotated with a wrong type
+	else do
+		-- build typed expression
+		let typedExpr = TypeInformation UnitType (Projection label expr_typed typ)
+		let typ' = RecordType [(label, UnitType)]
+		return (UnitType, constraints ++ [Equality typ typ'], typedExpr)
+
 -- (Ccase) if expression is a case
 generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do
 	-- build type assignment
@@ -537,6 +593,17 @@ meet t1 t2
 		(t1', constraints1) <- meet t11 t21
 		(t2', constraints2) <- meet t12 t22
 		return (ProductType t1' t2', constraints1 ++ constraints2)
+	| isRecordType t1 && isRecordType t2 && compareLabels t1 t2 = do
+		let (labels1, types1) = fromRecordType t1
+		let (_, types2) = fromRecordType t2
+		let list = zip types1 types2
+		-- run meet for each pair of types
+		results <- mapM (\x -> meet (fst x) (snd x)) list
+		-- get resulting types
+		let ts = map fst results
+		-- get resulting constraints
+		let cs = map snd results
+		return (VariantType $ zip labels1 ts, concat cs)
 	| isSumType t1 && isSumType t2 = do
 		let	(SumType t11 t12) = t1
 		let (SumType t21 t22) = t2
@@ -544,21 +611,16 @@ meet t1 t2
 		(t2', constraints2) <- meet t12 t22
 		return (SumType t1' t2', constraints1 ++ constraints2)
 	| isVariantType t1 && isVariantType t2 && compareLabels t1 t2 = do
-		let	(VariantType list1) = t1
-		let (VariantType list2) = t2
-		-- remove labels
-		let list1' = map snd list1
-		let list2' = map snd list2
-		let list = zip list1' list2'
+		let (labels1, types1) = fromVariantType t1
+		let (_, types2) = fromVariantType t2
+		let list = zip types1 types2
 		-- run meet for each pair of types
 		results <- mapM (\x -> meet (fst x) (snd x)) list
 		-- get resulting types
 		let ts = map fst results
 		-- get resulting constraints
 		let cs = map snd results
-		-- get labels
-		let labels = map fst list1
-		return (VariantType $ zip labels ts, concat cs)
+		return (VariantType $ zip labels1 ts, concat cs)
 	| otherwise = throwError $
 		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not compatible!!"
 
@@ -625,3 +687,35 @@ variantComponents labels t
 	-- throw error
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a variant type!!"
+
+-- get components of variant type
+recordComponents :: [Label] -> Type
+	-> StateT Int (Except String) ([Type], Constraints)
+recordComponents labels t
+	-- if t is type variable
+	| isVarType t = do
+		-- number of alternatives
+		let n = length labels
+		-- counter for variable creation
+		i <- get
+		put (i+n+1)
+		-- create new type variables
+		let typeVars = map newTypeVar [i..i+n]
+		-- build type consisting of new type variables
+		let list = zip labels typeVars
+		-- return types and equality relation t = <li:Ti>
+		return (typeVars, [Equality t (RecordType list)])
+	-- if t is variant type
+	| isRecordType t = do
+		let (_, types) = fromRecordType t
+		-- return types
+		return (types, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- number of alternatives
+		let n = length labels
+		-- return dynamic type
+		return (replicate n DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a record type!!"

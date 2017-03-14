@@ -40,6 +40,14 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		let (ProductType t21 t22) = t2
 		let constraints = [Consistency t12 t22, Consistency t11 t21]
 		unifyConstraints types (constraints ++ cs) counter
+	-- U (({l1i:T1i} ~C {l2i:T2i}) : cs)
+	-- => U
+	| isRecordType t1 && isRecordType t2 && compareLabels t1 t2 = do
+		let (_, types1) = fromRecordType t1
+		let (_, types2) = fromRecordType t2
+		let constraints =
+			map (\x -> Consistency (fst x) (snd x)) $ zip types1 types2
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t11 + t12 ~C t21 + t22) : cs)
 	-- => U ((t12 ~C t22, t11 ~C t21) : cs)
 	| isSumType t1 && isSumType t2 = do
@@ -60,7 +68,7 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 	| (not $ isVarType t1) && isVarType t2 = do
 		let constraints = [Consistency t2 t1]
 		unifyConstraints types (constraints ++ cs) counter
-	-- U ((t1 ~C t2) : cs), t1 ∈ {Int, Bool} ∪ TVar ∪ TParam
+	-- U ((t1 ~C t2) : cs), t2 ∈ {Int, Bool} ∪ TVar ∪ TParam
 	-- => U ((t1 =C t2) : cs)
 	| isVarType t1 && (isIntType t2 || isBoolType t2 || isVarType t2) = do
 		let constraints = [Equality t1 t2]
@@ -85,6 +93,30 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 			Consistency t11 t21,
 			Equality t1 (ProductType t11 t12)]
 		unifyConstraints types (constraints ++ cs) (counter+2)
+	-- U ((t1 ~C {li:ti}) : cs), t1 ∉ Vars(ti)
+	-- => U ((t1i ~C ti, t1 =C {li:ti}) : cs)
+	| isVarType t1 && isRecordType t2 && (not $ belongs t1 t2) = do
+		-- retrieve type
+		let RecordType list = t2
+		-- number of alternatives
+		let n = length list
+		-- create new type variables
+		let typeVars = map newTypeVar [counter..counter+n]
+		-- get labels and types from variant type
+		let (labels, types') = fromRecordType t2
+		-- create constraints between new type variables and existing types
+		let cs' = map
+			(\x -> let
+				-- get var
+				var = fst x
+				-- get type
+				typ = snd x
+				in (Consistency var typ))
+			$ zip typeVars types'
+		-- create variant type with type variables
+		let recordVarType = zip labels typeVars
+		let constraints = [Equality t1 $ RecordType recordVarType]
+		unifyConstraints types (cs' ++ constraints ++ cs) (counter+n)
 	-- U ((t1 ~C t21 + t22) : cs), t1 ∉ Vars(t21 + t22)
 	-- => U ((t12 ~C t22, t11 ~C t21, t1 =C t11 + t12) : cs)
 	| isVarType t1 && isSumType t2 && (not $ belongs t1 t2) = do
@@ -107,7 +139,7 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		-- get labels and types from variant type
 		let (labels, types') = fromVariantType t2
 		-- create constraints between new type variables and existing types
-		let cs = map
+		let cs' = map
 			(\x -> let
 				-- get var
 				var = fst x
@@ -118,7 +150,7 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		-- create variant type with type variables
 		let variantVarType = zip labels typeVars
 		let constraints = [Equality t1 $ VariantType variantVarType]
-		unifyConstraints types (cs ++ constraints) (counter+n)
+		unifyConstraints types (cs' ++ constraints ++ cs) (counter+n)
 	-- if no constraint matches, then throw error
 	| otherwise = throwError $
 		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not consistent!!"
@@ -141,6 +173,14 @@ unifyConstraints types ((Equality t1 t2) : cs) counter
 		let	(ProductType t11 t12) = t1
 		let (ProductType t21 t22) = t2
 		let constraints = [Equality t12 t22, Equality t11 t21]
+		unifyConstraints types (constraints ++ cs) counter
+	-- U (({l1i:T1i} =C {l2i:T2i}) : cs)
+	-- => U
+	| isRecordType t1 && isRecordType t2 && compareLabels t1 t2 = do
+		let (_, types1) = fromRecordType t1
+		let (_, types2) = fromRecordType t2
+		let constraints =
+			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t11 + t12 =C t21 + t22) : cs)
 	-- => U ((t12 =C t22, t11 =C t21) : cs)
@@ -186,6 +226,9 @@ belongs (VarType var) typ
 	| isProductType typ =
 		let (ProductType t21 t22) = typ
 		in (belongs (VarType var) t21) || (belongs (VarType var) t22)
+	| isRecordType typ =
+		let	(_, types) = fromRecordType typ
+		in any (belongs $ VarType var) types
 	| isSumType typ =
 		let (SumType t21 t22) = typ
 		in (belongs (VarType var) t21) || (belongs (VarType var) t22)

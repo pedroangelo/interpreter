@@ -7,6 +7,9 @@ import Syntax
 import Types
 import Examples
 
+-- Imports
+import Data.Maybe
+
 evaluationStyle = evaluate
 
 -- evaluate using call-by-value strategy
@@ -367,6 +370,45 @@ evaluate e@(Second expr)
 			(ProductType t11 t12) = t1
 			(ProductType t21 t22) = t2
 		in evaluationStyle $ Cast t12 t22 $ Second expr'
+
+-- if expression is a record
+evaluate e@(Record records)
+	-- push blames to the top level
+	| any isBlame $ exprs =
+		let	blames = filter isBlame exprs
+		in head blames
+	-- reduce expressions
+	| any (not . isValue) exprs =
+		let	exprs' = map evaluate exprs
+		in Record $ zip labels exprs'
+	| otherwise = e
+	where (labels, exprs) = fromRecords records
+
+-- if expression is a projection
+evaluate e@(Projection label expr typ)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluationStyle $ Projection label v typ
+	-- project element of record
+	| isRecord expr =
+		let
+			Record list = expr
+			Just expr' = lookup label list
+		in evaluationStyle expr'
+	-- C-Projection - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			-- get types from record
+			RecordType list1 = t1
+			RecordType list2 = t2
+			t' = fromJust $ lookup label list1
+			t'' = fromJust $ lookup label list2
+		in evaluationStyle $ Cast t' t'' $ Projection label expr' typ
+
 
 -- if expression is a case
 evaluate e@(Case expr (var1, expr1) (var2, expr2))

@@ -290,6 +290,13 @@ variants1 = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType), ("i"
 	[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
 	("i", "r", Application (Annotation "z" IntType $ Bool False) (Variable "r"))]
 
+variants1_err = Application
+	(Abstraction "a" $
+		CaseVariant (Variable "a")
+		[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
+		("i", "r", Application (Annotation "z" IntType $ Bool True) (Variable "r"))])
+	(Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", IntType)]))
+
 variants1_dyn = Application
 	(Annotation "a" DynType $
 		CaseVariant (Variable "a")
@@ -335,3 +342,94 @@ variants3 = Application
 
 variants3_dyn = CaseVariant (Tag "ib" (isZero) (VariantType [("ib", DynType)]))
 	[("ib", "l", Abstraction "x" $ Application (Variable "l") (Variable "x"))]
+
+records1 = Projection "b" (Record [("b", Bool True)]) (RecordType [("b", BoolType)])
+
+records1_dyn = Projection "b" (Record [("b", Bool True)]) (RecordType [("b", DynType)])
+
+records2 = Application
+	(Abstraction "x" $ Projection "b" (Variable "x") (RecordType [("b", DynType)]))
+	(Record [("b", Bool True)])
+
+records2_dyn = Application
+	(Annotation "x" DynType $ Projection "b" (Variable "x") (RecordType [("b", DynType)]))
+	(Record [("b", Bool True)])
+
+records3 = Projection "1" (Application
+	(Abstraction "x" $ If (Projection "1" (Variable "x") (RecordType [("1", BoolType), ("2", IntType)])) (Variable "x") (Variable "x"))
+	(Record [("1", Bool True), ("2", Int 1)])) (RecordType [("1", BoolType), ("2", IntType)])
+
+records3_dyn = Projection "1" (Application
+	(Annotation "x" DynType $ If (Projection "1" (Variable "x") (RecordType [("1", BoolType), ("2", IntType)])) (Variable "x") (Variable "x"))
+	(Record [("1", Bool True), ("2", Int 1)])) (RecordType [("1", BoolType), ("2", IntType)])
+
+-- Data
+
+posType = RecordType [("x", IntType), ("y", IntType)]
+squareType = RecordType [("topleft", posType), ("bottomright", posType)]
+circleType = RecordType [("center", posType), ("radius", IntType)]
+triangleType = RecordType [("p1", posType), ("p2", posType), ("p3", posType)]
+shapeType = VariantType
+	[("Square", squareType),
+	("Circle", circleType),
+	("Triangle", triangleType)]
+
+buildPos_func x y = Application (Application buildPos (Int x)) (Int y)
+buildPos = Abstraction "x" $ Abstraction "y" $
+	Record [("x", Variable "x"), ("y", Variable "y")]
+
+buildSquare_func p1 p2 = Application (Application buildSquare p1) p2
+buildSquare = Abstraction "tl" $ Abstraction "br" $
+	Tag "Square" (Record [("topleft", Variable "tl"), ("bottomright", Variable "br")]) shapeType
+
+square1 = buildSquare_func (buildPos_func 3 5) (buildPos_func 5 3)
+
+buildCircle_func c r = Application (Application buildCircle c) r
+buildCircle = Abstraction "c" $ Abstraction "r" $
+	Tag "Circle" (Record [("center", Variable "c"), ("radius", Variable "r")]) shapeType
+
+circle1 = buildCircle_func (buildPos_func 2 2) (Int 2)
+
+buildTriangle_func p1 p2 p3 = Application (Application (Application buildTriangle p1) p2) p3
+buildTriangle = Abstraction "p1" $ Abstraction "p2" $ Abstraction "p3" $
+	Tag "Triangle" (Record [("p1", Variable "p1"), ("p2", Variable "p2"), ("p3", Variable "p3")]) shapeType
+
+triangle1 = buildTriangle_func (buildPos_func 7 5) (buildPos_func 8 3) (buildPos_func 6 3)
+
+calculateCenterSquare = Abstraction "square" $
+	Let "topleft" (Projection "topleft" (Variable "square") squareType) $
+	Let "bottomright" (Projection "bottomright" (Variable "square") squareType) $
+	Let "topleftx" (Projection "x" (Variable "topleft") posType) $
+	Let "toplefty" (Projection "y" (Variable "topleft") posType) $
+	Let "bottomrightx" (Projection "x" (Variable "bottomright") posType) $
+	Let "bottomrighty" (Projection "y" (Variable "bottomright") posType) $
+	Application (Application (buildPos)
+		(Division (Addition (Variable "bottomrightx") (Variable "topleftx")) (Int 2)))
+		(Division (Addition (Variable "toplefty") (Variable "bottomrighty")) (Int 2))
+
+calculateCenterCircle = Abstraction "circle" $
+	Projection "center" (Variable "circle") circleType
+
+calculateCenterTriangle = Abstraction "triangle" $
+	Let "p1" (Projection "p1" (Variable "triangle") triangleType) $
+	Let "p2" (Projection "p2" (Variable "triangle") triangleType) $
+	Let "p3" (Projection "p3" (Variable "triangle") triangleType) $
+	Let "x" (Division
+		(Addition
+			(Projection "x" (Variable "p1") posType)
+			(Addition
+				(Projection "x" (Variable "p2") posType)
+				(Projection "x" (Variable "p3") posType))) (Int 3)) $
+	Let "y" (Division
+		(Addition
+			(Projection "y" (Variable "p1") posType)
+			(Addition
+				(Projection "y" (Variable "p2") posType)
+				(Projection "y" (Variable "p3") posType))) (Int 3)) $
+	Application (Application buildPos (Variable "x")) (Variable "y")
+
+calculateCenter = Abstraction "shape" $
+	CaseVariant (Variable "shape")
+		[("Square", "s", Application calculateCenterSquare (Variable "s")),
+		("Circle", "c", Application calculateCenterCircle (Variable "c")),
+		("Triangle", "t", Application calculateCenterTriangle (Variable "t"))]
