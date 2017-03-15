@@ -423,9 +423,9 @@ generateConstraints (ctx, Fold typ expr) = do
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints) <- generateConstraints typeAssignment
-	-- fold type
+	-- unfold type
 	let (Mu var typ') = typ
-	let t' = foldType (var, typ) typ'
+	let t' = unfoldType (var, typ) typ'
 	-- return type along with all the constraints
 	return (typ, constraints ++	[Equality t' t])
 
@@ -440,9 +440,9 @@ generateConstraints (ctx, Unfold typ expr) = do
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints) <- generateConstraints typeAssignment
-	-- fold type
+	-- unfold type
 	let (Mu var typ') = typ
-	let t' = foldType (var, typ) typ'
+	let t' = unfoldType (var, typ) typ'
 	-- return type along with all the constraints
 	return (t', constraints ++	[Equality typ t])
 

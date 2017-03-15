@@ -207,6 +207,8 @@ not' = Abstraction "b" $ If (Variable "b") (Bool False) (Bool True)
 gcd_func a b = Application (Application gcd' (Int a)) (Int b)
 gcd' = LetRec "gcd" (Abstraction "a" $ Abstraction "b" $ If (Equal (Variable "b") (Int 0)) (Variable "a") (Application (Application (Variable "gcd") (Variable "b")) (Application (Application moddiv (Variable "a")) (Variable "b")))) (Variable "gcd")
 
+absolute = Abstraction "x" $
+	If (GreaterEqualTo (Variable "x") (Int 0)) (Variable "x") (Multiplication (Variable "x") (Int (-1)))
 -- Examples to test let and letrec
 
 letrec_1 = LetRec "ten"

@@ -156,25 +156,25 @@ substituteType s@(old, new) t@(Mu var typ)
 	| otherwise = Mu var $ substituteType s typ
 	where (VarType var') = old
 
-foldType :: (String, Type) -> Type -> Type
-foldType s@(old, new) t@(VarType var)
+unfoldType :: (String, Type) -> Type -> Type
+unfoldType s@(old, new) t@(VarType var)
 	| old == var = new
 	| otherwise = t
-foldType s@(old, new) t@(ArrowType t1 t2) =
-	ArrowType (foldType s t1) (foldType s t2)
-foldType s@(old, new) t@(IntType) = t
-foldType s@(old, new) t@(BoolType) = t
-foldType s@(old, new) t@(UnitType) = t
-foldType s@(old, new) t@(ProductType t1 t2) =
-	ProductType (foldType s t1) (foldType s t2)
-foldType s@(old, new) t@(RecordType ts) =
-	RecordType $ map (\x -> (fst x, foldType s $ snd x)) ts
-foldType s@(old, new) t@(SumType t1 t2) =
-	SumType (foldType s t1) (foldType s t2)
-foldType s@(old, new) t@(VariantType ts) =
-	VariantType $ map (\x -> (fst x, foldType s $ snd x)) ts
-foldType s@(old, new) t@(Mu var typ)
-	| old == var = foldType s typ
+unfoldType s@(old, new) t@(ArrowType t1 t2) =
+	ArrowType (unfoldType s t1) (unfoldType s t2)
+unfoldType s@(old, new) t@(IntType) = t
+unfoldType s@(old, new) t@(BoolType) = t
+unfoldType s@(old, new) t@(UnitType) = t
+unfoldType s@(old, new) t@(ProductType t1 t2) =
+	ProductType (unfoldType s t1) (unfoldType s t2)
+unfoldType s@(old, new) t@(RecordType ts) =
+	RecordType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
+unfoldType s@(old, new) t@(SumType t1 t2) =
+	SumType (unfoldType s t1) (unfoldType s t2)
+unfoldType s@(old, new) t@(VariantType ts) =
+	VariantType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
+unfoldType s@(old, new) t@(Mu var typ)
+	| old == var = unfoldType s typ
 	| otherwise = t
 
 -- apply substitution to constraints
