@@ -435,3 +435,111 @@ calculateCenter = Abstraction "shape" $
 		[("Square", "s", Application calculateCenterSquare (Variable "s")),
 		("Circle", "c", Application calculateCenterCircle (Variable "c")),
 		("Triangle", "t", Application calculateCenterTriangle (Variable "t"))]
+
+-- Recursive Types
+
+-- List of Int
+intList = Mu "L" $ SumType (UnitType) (ProductType IntType (VarType "L"))
+intList' = unfoldType ("L", intList) intList
+
+nil = Fold intList $ LeftTag Unit intList'
+
+cons = Abstraction "n" $ Abstraction "l" $ Fold intList $ RightTag (Pair (Variable "n") (Variable "l")) intList'
+
+isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", Bool True) ("x", Bool False)
+
+hd = Annotation "l" DynType $ Case (Unfold intList $ Variable "l") ("x", (Int (-1))) ("x", First $ Variable "x")
+
+tl = Annotation "l" DynType $ Case (Unfold intList $ Variable "l") ("x", nil) ("x", Second $ Variable "x")
+
+list1 = Application (Application cons (Int 1)) nil
+
+list2 = Application (Application cons (Int 2)) list1
+
+sumlist = Fix $ Abstraction "s" $ Abstraction "l" $ If (Application (isnil) (Variable "l")) (Int 0) (Addition (Application (hd) (Variable "l")) (Application (Variable "s") (Application (tl) (Variable "l"))))
+
+mapInt = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $ If (Application isnil (Variable "l")) nil (Application (Application (cons) (Application (Variable "f") (Application (hd) (Variable "l")))) (Application (Application (Variable "m") (Variable "f")) (Application (tl) (Variable "l"))))
+
+map_func f l =  Application (Application (mapInt) f) l
+
+-- Ordering
+
+orderingType = VariantType [("LT", UnitType), ("EQ", UnitType), ("GT", UnitType)]
+
+compare_func x y = Application (Application compare' x) (y)
+
+compare' = Abstraction "x" $ Abstraction "y" $
+	If (Equal (Variable "x") (Variable "y"))
+		(Tag "EQ" Unit orderingType)
+		(If (LesserThan (Variable "x") (Variable "y"))
+			(Tag "LT" Unit orderingType)
+			(Tag "GT" Unit orderingType))
+-- Trees of ints
+
+treeType = Mu "T" $ VariantType
+	[("Leaf", UnitType),
+	("Node", RecordType
+		[("Value", IntType),
+		("Left", VarType "T"),
+		("Right", VarType "T")])]
+
+treeType' = unfoldType ("T", treeType) treeType
+
+emptyTree = Fold treeType $ Tag "Leaf" Unit treeType'
+
+tree1 = Fold treeType $ Tag "Node"
+	(Record
+		[("Value", Int 1),
+		("Left", emptyTree ),
+		("Right", emptyTree )]) treeType'
+
+getNumberNode = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
+	[(("Leaf"), "x", (Int (-1))),
+	(("Node"), "x", Projection "Value" (Variable "x")
+		(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))]
+
+getLeftSide = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
+	[("Leaf", "x", emptyTree),
+	("Node", "x", Projection "Left" (Variable "x")
+		(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))]
+
+getRightSide = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
+	[("Leaf", "x", emptyTree),
+	("Node", "x", Projection "Right" (Variable "x")
+		(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))]
+
+sizeTree = Fix $ Abstraction "s" $ Abstraction "t" $
+	CaseVariant (Unfold treeType $ Variable "t")
+		[("Leaf", "", Int 0),
+		("Node", "x", Addition
+			(Application (Variable "s") (Projection "Left" (Variable "x")
+				(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)])))
+			(Application (Variable "s") (Projection "Right" (Variable "x")
+				(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))))]
+
+insertTree = Abstraction "i" $ Abstraction "t" $
+	CaseVariant (Unfold treeType $ Variable "t")
+	[("Leaf", "leaf", Fold treeType $
+		Tag "Node" (Record
+			[("Value", Variable "i"),
+			("Left", emptyTree),
+			("Right", emptyTree)]) treeType'),
+	("Node", "node", Let "num" (Application getNumberNode (Variable "node")) $
+		CaseVariant (compare_func (Variable "i") (Variable "num"))
+			[("LT", "", Fold treeType $
+				Tag "Node" (Record
+					[("Value", Variable "num"),
+					("Left", Let "l" (Application getLeftSide (Variable "node")) $
+						Application (Application insertTree (Variable "i")) (Variable "l")),
+					("Right", Application getRightSide (Variable "node"))]) treeType'),
+			("EQ", "", Fold treeType $
+				Tag "Node" (Record
+					[("Value", Variable "num"),
+					("Left", Application getLeftSide (Variable "node")),
+					("Right", Application getRightSide (Variable "node"))]) treeType'),
+			("GT", "", Fold treeType $
+				Tag "Node" (Record
+					[("Value", Variable "num"),
+					("Left", Application getLeftSide (Variable "node")),
+					("Right", Let "r" (Application getRightSide (Variable "node")) $
+						Application (Application insertTree (Variable "i")) (Variable "r"))]) treeType')])]

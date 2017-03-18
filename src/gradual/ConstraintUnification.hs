@@ -63,6 +63,11 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		let constraints =
 			map (\x -> Consistency (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints types (constraints ++ cs) counter
+	| isMuType t1 && isMuType t2 && compareVars t1 t2 = do
+		let Mu _ t1' = t1
+		let Mu _ t2' = t2
+		let constraints = [Consistency t1' t2']
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 ~C t1) : cs)
 	| (not $ isVarType t1) && isVarType t2 = do
@@ -70,7 +75,7 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t2) : cs), t2 ∈ {Int, Bool} ∪ TVar ∪ TParam
 	-- => U ((t1 =C t2) : cs)
-	| isVarType t1 && (isIntType t2 || isBoolType t2 || isVarType t2) = do
+	| isVarType t1 && (isIntType t2 || isBoolType t2 || isUnitType t2 || isVarType t2) = do
 		let constraints = [Equality t1 t2]
 		unifyConstraints types (constraints ++ cs) counter
 	-- U ((t1 ~C t21 -> t22) : cs), t1 ∉ Vars(t21 -> t22)
@@ -151,6 +156,12 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		let variantVarType = zip labels typeVars
 		let constraints = [Equality t1 $ VariantType variantVarType]
 		unifyConstraints types (cs' ++ constraints ++ cs) (counter+n)
+	| isVarType t1 && isMuType t2 && (not $ belongs t1 t2) = do
+		let	t = newTypeVar counter
+		let (Mu var t2') = t2
+		let constraints = [Consistency t t2',
+			Equality t1 (Mu var t)]
+		unifyConstraints types (constraints ++ cs) (counter+2)
 	-- if no constraint matches, then throw error
 	| otherwise = throwError $
 		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not consistent!!"
@@ -197,6 +208,10 @@ unifyConstraints types ((Equality t1 t2) : cs) counter
 		let constraints =
 			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints types (constraints ++ cs) counter
+	| isMuType t1 && isMuType t2 && compareVars t1 t2 = do
+		let (Mu var1 t1') = t1
+		let (Mu var2 t2') = t2
+		unifyConstraints types ([Equality t1' t2'] ++ cs) counter
 	-- U ((t1 =C t2) : cs), t1 ∉ TVars
 	-- => U ((t2 =C t1) : cs)
 	| (not $ isVarType t1) && isVarType t2 = do
@@ -235,5 +250,10 @@ belongs (VarType var) typ
 	| isVariantType typ =
 		let	(_, types) = fromVariantType typ
 		in any (belongs $ VarType var) types
+	| isMuType typ =
+		let (Mu var' t') = typ
+		in if var' == var
+			then False
+			else belongs (VarType var) t'
 	| otherwise = False
 belongs _ _ = False

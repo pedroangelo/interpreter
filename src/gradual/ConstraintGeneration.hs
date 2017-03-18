@@ -296,7 +296,7 @@ generateConstraints (ctx, Second expr) = do
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
 	-- build typed expression
-	let typedExpr = TypeInformation newVar2 (First expr_typed)
+	let typedExpr = TypeInformation newVar2 (Second expr_typed)
 	-- return type along with all the constraints
 	return (newVar2, constraints ++ [Consistency t (ProductType newVar1 newVar2)], typedExpr)
 
@@ -500,6 +500,69 @@ generateConstraints (ctx, Tag label expr typ) = do
 		let typedExpr = TypeInformation typ' (Tag label expr_typed typ)
 		return (typ', constraints ++ [Consistency typ typ'], typedExpr)
 
+-- (Cfold) if expression is a fold
+generateConstraints (ctx, Fold typ expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- unfold type
+	let (Mu var typ') = typ
+	let t' = unfoldType (var, typ) typ'
+	-- build typed expression
+	let typedExpr = TypeInformation typ (Fold typ expr_typed)
+	-- return type along with all the constraints
+	return (typ, constraints ++	[Consistency t' t], typedExpr)
+
+-- {-
+-- (Cunfold) if expression is a unfold
+generateConstraints (ctx, Unfold typ expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	let (Mu var _) = typ
+	(Mu var' typ', constraints2) <- muComponents var t
+	-- unfold type
+	let t' = unfoldType (var', Mu var' typ') typ'
+	-- build typed expression
+	let typedExpr = TypeInformation t' (Unfold typ expr_typed)
+	-- return type along with all the constraints
+	return (t', constraints ++ constraints2 ++
+		[Consistency typ (Mu var' typ')], typedExpr)
+-- -}
+
+{-
+-- (Cunfold) if expression is a unfold
+generateConstraints (ctx, Unfold typ expr) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- unfold type
+	let (Mu var typ') = typ
+	let t' = unfoldType (var, typ) typ'
+	-- build typed expression
+	let typedExpr = TypeInformation t' (Unfold typ expr_typed)
+	-- return type along with all the constraints
+	return (t', constraints ++ [Consistency typ t], typedExpr)
+-}
+
 -- (C:) if expression if a type information
 generateConstraints (ctx, e@(TypeInformation typ expr)) = do
 	-- build type assignment
@@ -577,6 +640,7 @@ meet :: Type -> Type -> Except String (Type, Constraints)
 meet t1 t2
 	| isIntType t1 && isIntType t2 = return (IntType, [])
 	| isBoolType t1 && isBoolType t2 = return (BoolType, [])
+	| isUnitType t1 && isUnitType t2 = return (UnitType, [])
 	| isDynType t2 = return (t1, [Consistency t1 DynType])
 	| isDynType t1 = return (t2, [Consistency DynType t2])
 	| isVarType t1 = return (t1, [Consistency t1 t2])
@@ -621,6 +685,11 @@ meet t1 t2
 		-- get resulting constraints
 		let cs = map snd results
 		return (VariantType $ zip labels1 ts, concat cs)
+	| isMuType t1 && isMuType t2 && compareVars t1 t2 = do
+		let (Mu var1 t1') = t1
+		let (Mu var2 t2') = t2
+		(t, constraints) <- meet t1' t2'
+		return (Mu var1 t, constraints)
 	| otherwise = throwError $
 		"Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not compatible!!"
 
@@ -628,7 +697,6 @@ meetM :: (Type, Constraints) -> Type -> Except String (Type, Constraints)
 meetM (t1, c) t2 = do
 	(t, constraints) <- meet t1 t2
 	return (t, c ++ constraints)
-
 
 -- get components of sum type
 sumComponents :: Type -> StateT Int (Except String) ((Type, Type), Constraints)
@@ -719,3 +787,30 @@ recordComponents labels t
 	-- throw error
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a record type!!"
+
+-- get components of recursive type
+muComponents :: Var -> Type
+	-> StateT Int (Except String) (Type, Constraints)
+muComponents var t
+	-- if t is type variable
+	| isVarType t = do
+		-- counter for variable creation
+		i <- get
+		put (i+1)
+		-- create new type variable
+		let typeVar = newTypeVar i
+		-- build type consisting of new type variables
+		let typ = Mu var typeVar
+		-- return types and equality relation t = <li:Ti>
+		return (typ, [Equality t typ])
+	-- if t is variant type
+	| isMuType t = do
+		-- return type
+		return (t, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- return dynamic type
+		return (Mu var DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a recursive type!!"

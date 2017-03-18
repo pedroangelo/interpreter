@@ -270,6 +270,24 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
 insertCasts e@(TypeInformation typ (Tag label expr t)) =
 	TypeInformation t $ Tag label (insertCasts expr) t
 
+-- if expression is a fold
+insertCasts e@(TypeInformation typ (Fold t expr)) =
+	TypeInformation t $ Fold t $ insertCasts expr
+
+-- if expression is a unfold
+insertCasts e@(TypeInformation typ (Unfold t expr)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- build types
+		TypeInformation pm _ = expr'
+		Mu var _ = t
+		Mu var' typ' = patternMatchMu pm var
+		finalType = unfoldType (var', t) typ'
+		-- build casts
+		cast = Cast pm (Mu var' typ') expr'
+	in TypeInformation finalType $ Unfold t cast
+
 -- obtain pattern match type for arrow
 patternMatchArrow :: Type -> Type
 patternMatchArrow e@(ArrowType type1 type2) = e
@@ -296,6 +314,11 @@ patternMatchVariant :: Type -> [String] -> Type
 patternMatchVariant e@(VariantType _) labels = e
 patternMatchVariant e@(DynType) labels =
 	VariantType $ map (\x -> (x, DynType)) labels
+
+-- obtain pattern math type for recursive type
+patternMatchMu :: Type -> Var -> Type
+patternMatchMu e@(Mu var typ) _ = e
+patternMatchMu e@(DynType) var = Mu var DynType
 
 -- obtain join of types
 joinType :: Type -> Type -> Type

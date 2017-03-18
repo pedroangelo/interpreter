@@ -287,7 +287,7 @@ evaluate e@(Second expr)
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluate $ First v
+		in evaluate $ Second v
 	-- project first element of pair
 	| isPair expr =
 		let (Pair expr1 expr2) = expr

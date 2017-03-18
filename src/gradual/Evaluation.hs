@@ -358,7 +358,7 @@ evaluate e@(Second expr)
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluationStyle $ First v
+		in evaluationStyle $ Second v
 	-- project first element of pair
 	| isPair expr =
 		let (Pair expr1 expr2) = expr
@@ -509,6 +509,39 @@ evaluate e@(Tag label expr typ)
 		let v = evaluate expr
 		in Tag label v typ
 	| otherwise = e
+
+-- if expression is a fold
+evaluate e@(Fold typ expr)
+	-- push blame to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in Fold typ v
+	| otherwise = e
+
+-- if expression is a fold
+evaluate e@(Unfold typ expr)
+	-- push blame to top level
+	| isBlame expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in Unfold typ v
+	-- if expression is an unfold of a fold
+	| isFold expr =
+		let (Fold _ expr') = expr
+		in expr'
+	-- C-Unfold - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			(Mu var1 t1') = t1
+			(Mu var2 t2') = t2
+			t1'' = unfoldType (var1, t1) t1'
+			t2'' = unfoldType (var2, t2) t2'
+			cast = Cast t1'' t2'' $ Unfold typ expr'
+			in evaluationStyle cast
 
 -- if expression is a type information
 evaluate e@(TypeInformation typ expr) = expr

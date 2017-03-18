@@ -53,6 +53,9 @@ data Expression
 	-- Variants
 	| CaseVariant Expression Alternatives
 	| Tag Label Expression Type
+	-- Recursive Types
+	| Fold Type Expression
+	| Unfold Type Expression
 	-- Type Annotations
 	| TypeInformation Type Expression
 	-- Casts
@@ -107,6 +110,8 @@ mapExpression f e@(CaseVariant expr alternatives) =
 	f (CaseVariant (mapExpression f expr)
 	(map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
 mapExpression f e@(Tag label expr typ) = f (Tag label (mapExpression f expr) typ)
+mapExpression f e@(Fold typ expr) = f (Fold typ (mapExpression f expr))
+mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
 mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
 mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
 mapExpression f e@(Blame typ label) = f e
@@ -273,6 +278,16 @@ isTag :: Expression -> Bool
 isTag (Tag _ _ _) = True
 isTag _ = False
 
+-- check if is a fold
+isFold :: Expression -> Bool
+isFold (Fold _ _) = True
+isFold _ = False
+
+-- check if is an unfold
+isUnfold :: Expression -> Bool
+isUnfold (Unfold _ _) = True
+isUnfold _ = False
+
 -- check if is a type information
 isTypeInformation :: Expression -> Bool
 isTypeInformation (TypeInformation _ _) = True
@@ -300,6 +315,7 @@ isValue e =
 	(isRecord e && isValueRecord e) ||
 	((isLeftTag e || isRightTag e) && isValueSums e) ||
 	(isTag e && isValueVariants e) ||
+	isFold e ||
 	isValueCast e ||
 	isBlame e
 
@@ -333,7 +349,8 @@ isValueCast (Cast t1 t2 e) =
 	(isRecordType t1 && isRecordType t2 && isValue e && t1 /= t2) ||
 	(isSumType t1 && isSumType t2 && isValue e && t1 /= t2) ||
 	(isVariantType t1 && isVariantType t2 && isValue e && t1 /= t2) ||
-	(isForAllType t1 && isForAllType t2 && t1 /= t2 && isValue e)
+	(isForAllType t1 && isForAllType t2 && isValue e && t1 /= t2) ||
+	(isMuType t1 && isMuType t2 && isValue e && t1 /= t2)
 isValueCast _ = False
 
 -- check if is an arithmetic operator
@@ -496,6 +513,12 @@ substitute s@(old, new) e@(CaseVariant expr alternatives) =
 	CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
 substitute s@(old, new) e@(Tag label expr typ) =
 	Tag label (substitute s expr) typ
+
+-- if the expression is a fold or unfold
+substitute s@(old, new) e@(Fold typ expr) =
+	Fold typ (substitute s expr)
+substitute s@(old, new) e@(Unfold typ expr) =
+	Unfold typ (substitute s expr)
 
 -- if expression is a type information, propagate substitutions
 substitute s@(old, new) e@(TypeInformation typ expr) =
