@@ -88,6 +88,13 @@ evaluate e@(Fix expr)
 	| not $ isValue expr =
 		let v = evaluate expr
 		in evaluationStyle $ Fix v
+	-- C-FIX - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			(ArrowType t11 t12) = t1
+			(ArrowType t21 t22) = t2
+		in evaluationStyle $ Cast t11 t21 $ Fix expr'
 	-- substitute abstraction variable with e in expr
 	| isAbstraction expr =
 		let (Abstraction var expr') = expr

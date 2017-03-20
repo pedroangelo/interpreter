@@ -674,7 +674,7 @@ meet t1 t2
 		let ts = map fst results
 		-- get resulting constraints
 		let cs = map snd results
-		return (VariantType $ zip labels1 ts, concat cs)
+		return (RecordType $ zip labels1 ts, concat cs)
 	| isSumType t1 && isSumType t2 = do
 		let	(SumType t11 t12) = t1
 		let (SumType t21 t22) = t2

@@ -40,22 +40,15 @@ lambda_Y = Abstraction "g" (Application (Abstraction "x" (Application (Variable 
 -- Still need to test execution with casts
 
 -- (λx . x) 1 : Int
--- Expression: (app (abs int x\x) (zero))
--- Compiled: (app (cast (abs int (W1\ W1)) (arrow int int) _T1 (arrow int int)) (cast zero int _T1 int))
 tested_1 = Application (Annotation "x" IntType $ Variable "x") (Int 0)
 
 -- (λx : ? . x) 0 : ?
--- Expression: (app (abs dyn x\x) (zero))
--- Compiled: (app (cast (abs dyn (W1\ W1)) (arrow dyn dyn) _T1 (arrow dyn dyn)) (cast zero int _T1 dyn))
 tested_1_dyn = Application (Annotation "x" DynType $ Variable "x") (Int 0)
 
 -- (λx : Int . 0 + x) True : TypeError
--- Expression: (app (abs int (x\(add (zero) x))) (tt))
 tested_2 = Application (Annotation "x" IntType (Addition (Int 0) (Variable "x"))) (Bool True)
 
 -- (λx : ? . 0 + x) True : Int
--- Expression: (app (abs dyn (x\(add (zero) x))) (tt))
--- Compiled: (app (cast (abs dyn (W1\ add (cast zero int (_T1 W1) int) (cast W1 dyn (_T1 W1) int))) (arrow dyn int) _T2 (arrow dyn int)) (cast tt bool _T2 dyn))
 tested_2_dyn = Application (Annotation "x" DynType (Addition (Int 0) (Variable "x"))) (Bool True)
 
 tested_3 = Let "id"
@@ -72,8 +65,6 @@ tested_3 = Let "id"
 			(Int 2)))
 
 -- let id = (λx . x) in (if (id True) then (id 0) else (id 0)) : ?
--- Expression: (let (abs dyn x\x) (i\(if (app (i) (tt)) (app (i) (zero)) (app (i) (zero)))))
--- Compiled: (let (abs dyn (W1\ W1)) (W1\ if (cast (app (cast W1 (arrow dyn dyn) (_T1 W1) (arrow dyn dyn)) (cast tt bool (_T1 W1) dyn)) dyn (_T2 W1) bool) (cast (app (cast W1 (arrow dyn dyn) (_T3 W1) (arrow dyn dyn)) (cast zero int (_T3 W1) dyn)) dyn (_T2 W1) dyn) (cast (app (cast W1 (arrow dyn dyn) (_T4 W1) (arrow dyn dyn)) (cast zero int (_T4 W1) dyn)) dyn (_T2 W1) dyn)))
 tested_3_dyn = Let "id"
 	(Annotation "x" DynType (Variable "x"))
 	(If
@@ -99,8 +90,6 @@ tested_4 = Application (Abstraction "id" (If
 			(Int 2)))) (Abstraction "x" $ Variable "x")
 
 -- (λid : ? . if (id True) then (id 0) else (id 0)) (λx : ? . x) : ?
--- Expression: (app (abs dyn id\(if (app id tt) (app id zero) (app id zero))) (abs dyn x\x))
--- Compiled: (app (cast (abs dyn (W1\ if (cast (app (cast W1 dyn (_T1 W1) (arrow dyn dyn)) (cast tt bool (_T1 W1) dyn)) dyn (_T2 W1) bool) (cast (app (cast W1 dyn (_T3 W1) (arrow dyn dyn)) (cast zero int (_T3 W1) dyn)) dyn (_T2 W1) dyn) (cast (app (cast W1 dyn (_T4 W1) (arrow dyn dyn)) (cast zero int (_T4 W1) dyn)) dyn (_T2 W1) dyn))) (arrow dyn dyn) _T5 (arrow dyn dyn)) (cast (abs dyn (W1\ W1)) (arrow dyn dyn) _T5 dyn))
 tested_4_dyn = Application (Annotation "id" DynType (If
 		(Application
 			(Variable "id")
@@ -113,22 +102,16 @@ tested_4_dyn = Application (Annotation "id" DynType (If
 			(Int 2)))) (Annotation "x" DynType $ Variable "x")
 
 -- let incr = (λx:? . 1 + x) in incr True : Int
--- Expression: (let (abs dyn x\(add zero x)) (incr\(app incr tt)))
--- Compiled: (let (abs dyn (W1\ add (cast zero int (_T1 W1) int) (cast W1 dyn (_T1 W1) int))) (W1\ app (cast W1 (arrow dyn int) (_T2 W1) (arrow dyn int)) (cast tt bool (_T2 W1) dyn)))
 tested_5_dyn = Let "incr"
 	(Annotation "x" DynType $ Addition (Int 1) (Variable "x"))
 	(Application (Variable "incr") (Bool True))
 
 -- (λx : ? . if x then 1 else 2) 1 : Int
--- Expression: (app (abs dyn x\(if x zero zero)) zero)
--- Compiled: (app (cast (abs dyn (W1\ if (cast W1 dyn (_T1 W1) bool) (cast zero int (_T1 W1) int) (cast zero int (_T1 W1) int))) (arrow dyn int) _T2 (arrow dyn int)) (cast zero int _T2 dyn))
 tested_6 = Application
 	(Annotation "x" DynType $ If (Variable "x") (Int 1) (Int 2))
 	(Int 1)
 
 -- (λn1 . λn2 . n1 + n2) : Int -> Int -> Int
--- Expression: (abs int x\(abs int y\(add x y)))
--- Compiled: (abs int (W1\ abs int (W2\ add (cast W1 int (_T1 W1 W2) int) (cast W2 int (_T1 W1 W2) int))))
 plus = Abstraction "n1" $ Abstraction "n2" $ Addition (Variable "n1") (Variable "n2")
 
 -- (λx . if (x == 0) then True else False) : Int -> Bool
@@ -193,19 +176,47 @@ parameters_6_err_2 = Application
 -- Examples of useful functions
 
 factorial_func n = Application factorial (Int n)
-factorial = LetRec "fact" (Abstraction "n" $ If (Equal (Variable "n") (Int 0)) (Int 1) (Multiplication (Variable "n") (Application (Variable "fact") (Subtraction (Variable "n") (Int 1))))) (Variable "fact")
+factorial = LetRec "fact"
+	(Abstraction "n" $ If (Equal (Variable "n") (Int 0))
+		(Int 1)
+		(Multiplication
+			(Variable "n")
+			(Application
+				(Variable "fact")
+				(Subtraction (Variable "n") (Int 1)))))
+	(Variable "fact")
 
 power_func n p = Application (Application power (Int n)) (Int p)
-power = LetRec "power" (Abstraction "n" $ Abstraction "p" $ If (Equal (Variable "p") (Int 0)) (Int 1) (Multiplication (Variable "n") (Application (Application (Variable "power") (Variable "n")) (Subtraction (Variable "p") (Int 1))))) (Variable "power")
+power = LetRec "power"
+	(Abstraction "n" $ Abstraction "p" $ If (Equal (Variable "p") (Int 0))
+		(Int 1)
+		(Multiplication
+			(Variable "n")
+			(Application
+				(Application (Variable "power") (Variable "n"))
+				(Subtraction (Variable "p") (Int 1)))))
+	(Variable "power")
 
 moddiv_func m n = Application (Application moddiv (Int m)) (Int n)
-moddiv = Abstraction "m" $ Abstraction "n" $ Let "quotient" (Division (Variable "m") (Variable "n")) (Subtraction (Variable "m") (Multiplication (Variable "n") (Variable "quotient")))
+moddiv = Abstraction "m" $ Abstraction "n" $
+	Let "quotient" (Division (Variable "m") (Variable "n"))
+		(Subtraction
+			(Variable "m")
+			(Multiplication (Variable "n") (Variable "quotient")))
 
 not_func b = Application not' (Bool b)
 not' = Abstraction "b" $ If (Variable "b") (Bool False) (Bool True)
 
 gcd_func a b = Application (Application gcd' (Int a)) (Int b)
-gcd' = LetRec "gcd" (Abstraction "a" $ Abstraction "b" $ If (Equal (Variable "b") (Int 0)) (Variable "a") (Application (Application (Variable "gcd") (Variable "b")) (Application (Application moddiv (Variable "a")) (Variable "b")))) (Variable "gcd")
+gcd' = LetRec "gcd"
+	(Abstraction "a" $ Abstraction "b" $ If (Equal (Variable "b") (Int 0))
+		(Variable "a")
+		(Application
+			(Application (Variable "gcd") (Variable "b"))
+			(Application
+				(Application moddiv (Variable "a"))
+				(Variable "b"))))
+	(Variable "gcd")
 
 absolute = Abstraction "x" $
 	If (GreaterEqualTo (Variable "x") (Int 0)) (Variable "x") (Multiplication (Variable "x") (Int (-1)))
@@ -444,21 +455,46 @@ intList' = unfoldType ("L", intList) intList
 
 nil = Fold intList $ LeftTag Unit intList'
 
-cons = Abstraction "n" $ Abstraction "l" $ Fold intList $ RightTag (Pair (Variable "n") (Variable "l")) intList'
+cons = Abstraction "n" $ Abstraction "l" $
+	Fold intList $ RightTag (Pair (Variable "n") (Variable "l")) intList'
 
-isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", Bool True) ("x", Bool False)
+isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l")
+	("x", Bool True)
+	("x", Bool False)
 
-hd = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", (Int (-1))) ("x", First $ Variable "x")
+hd = Abstraction "l" $ Case (Unfold intList $ Variable "l")
+	("x", (Int (-1)))
+	("x", First $ Variable "x")
 
-tl = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", nil) ("x", Second $ Variable "x")
+tl = Abstraction "l" $ Case (Unfold intList $ Variable "l")
+	("x", nil)
+	("x", Second $ Variable "x")
 
 list1 = Application (Application cons (Int 1)) nil
 
 list2 = Application (Application cons (Int 2)) list1
 
-sumlist = Fix $ Abstraction "s" $ Abstraction "l" $ If (Application (isnil) (Variable "l")) (Int 0) (Addition (Application (hd) (Variable "l")) (Application (Variable "s") (Application (tl) (Variable "l"))))
+sumlist = Fix $ Abstraction "s" $ Abstraction "l" $
+	If (Application (isnil) (Variable "l"))
+		(Int 0)
+		(Addition
+			(Application (hd) (Variable "l"))
+			(Application
+				(Variable "s")
+				(Application (tl) (Variable "l"))))
 
-mapInt = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $ If (Application isnil (Variable "l")) nil (Application (Application (cons) (Application (Variable "f") (Application (hd) (Variable "l")))) (Application (Application (Variable "m") (Variable "f")) (Application (tl) (Variable "l"))))
+mapInt = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $
+	If (Application isnil (Variable "l"))
+		nil
+		(Application
+			(Application
+				(cons)
+				(Application
+					(Variable "f")
+					(Application (hd) (Variable "l"))))
+			(Application
+				(Application (Variable "m") (Variable "f"))
+				(Application (tl) (Variable "l"))))
 
 map_func f l =  Application (Application (mapInt) f) l
 
@@ -483,6 +519,11 @@ treeType = Mu "T" $ VariantType
 		("Left", VarType "T"),
 		("Right", VarType "T")])]
 
+nodeType = RecordType
+	[("Value", IntType),
+	("Left", treeType),
+	("Right", treeType)]
+
 treeType' = unfoldType ("T", treeType) treeType
 
 emptyTree = Fold treeType $ Tag "Leaf" Unit treeType'
@@ -493,32 +534,25 @@ tree1 = Fold treeType $ Tag "Node"
 		("Left", emptyTree ),
 		("Right", emptyTree )]) treeType'
 
-getNumberNode = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
-	[(("Leaf"), "x", (Int (-1))),
-	(("Node"), "x", Projection "Value" (Variable "x")
-		(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))]
+tree12 = Application (Application insertTree (Int 2)) (tree1)
 
-getLeftSide = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
-	[("Leaf", "x", emptyTree),
-	("Node", "x", Projection "Left" (Variable "x")
-		(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))]
+tree123 = Application (Application insertTree (Int 3)) (tree12)
 
-getRightSide = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
-	[("Leaf", "x", emptyTree),
-	("Node", "x", Projection "Right" (Variable "x")
-		(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))]
+getNumberNode = Abstraction "node" $ Projection "Value" (Variable "node") nodeType
+
+getLeftSide = Abstraction "node" $ Projection "Left" (Variable "node") nodeType
+
+getRightSide = Abstraction "node" $ Projection "Right" (Variable "node") nodeType
 
 sizeTree = Fix $ Abstraction "s" $ Abstraction "t" $
 	CaseVariant (Unfold treeType $ Variable "t")
 		[("Leaf", "", Int 0),
 		("Node", "x", Addition (Int 1)
 			(Addition
-				(Application (Variable "s") (Projection "Left" (Variable "x")
-					(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)])))
-				(Application (Variable "s") (Projection "Right" (Variable "x")
-					(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)])))))]
+				(Application (Variable "s") (Projection "Left" (Variable "x") nodeType ))
+				(Application (Variable "s") (Projection "Right" (Variable "x") nodeType ))))]
 
-insertTree = Abstraction "i" $ Abstraction "t" $
+insertTree = Fix $ Abstraction "insertTree" $ Abstraction "i" $ Abstraction "t" $
 	CaseVariant (Unfold treeType $ Variable "t")
 		[("Leaf", "leaf", Fold treeType $
 			Tag "Node" (Record
@@ -531,7 +565,7 @@ insertTree = Abstraction "i" $ Abstraction "t" $
 					Tag "Node" (Record
 						[("Value", Variable "num"),
 						("Left", Let "l" (Application getLeftSide (Variable "node")) $
-							Application (Application insertTree (Variable "i")) (Variable "l")),
+							Application (Application (Variable "insertTree") (Variable "i")) (Variable "l")),
 						("Right", Application getRightSide (Variable "node"))]) treeType'),
 				("EQ", "", Fold treeType $
 					Tag "Node" (Record
@@ -543,4 +577,4 @@ insertTree = Abstraction "i" $ Abstraction "t" $
 						[("Value", Variable "num"),
 						("Left", Application getLeftSide (Variable "node")),
 						("Right", Let "r" (Application getRightSide (Variable "node")) $
-							Application (Application insertTree (Variable "i")) (Variable "r"))]) treeType')])]
+							Application (Application (Variable "insertTree") (Variable "i")) (Variable "r"))]) treeType')])]
