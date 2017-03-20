@@ -150,17 +150,11 @@ generateConstraints (ctx, Let var expr1 expr2)
 
 -- (Cfix) if expression is a fixed point
 generateConstraints (ctx, Fix expr) = do
-	-- counter for variable creation
-	i <- get
-	put (i+2)
-	-- create new type variable
-	let newVar1 = newTypeVar i
-	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
 	let typeAssignment1 = (ctx, expr)
 	-- obtain type and generate constraints for type assignment
 	(t1, constraints1, expr_typed) <- generateConstraints typeAssignment1
-	(ArrowType t11 t12, constraints2) <- fixComponents t1
+	(ArrowType t11 t12, constraints2) <- patternMatchArrow t1
 	-- build typed expression
 	let typedExpr = TypeInformation t11 (Fix expr_typed)
 	return (t11, constraints1 ++ constraints2, typedExpr)
@@ -269,37 +263,27 @@ generateConstraints (ctx, Pair expr1 expr2) = do
 
 -- (Cfst) if expression is a first projection
 generateConstraints (ctx, First expr) = do
-	-- counter for variable creation
-	i <- get
-	put (i+2)
-	-- create new type variable
-	let newVar1 = newTypeVar i
-	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
-	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(t, constraints1, expr_typed) <- generateConstraints typeAssignment
+	(ProductType t1 t2, constraints2) <- patternMatchProduct t
 	-- build typed expression
-	let typedExpr = TypeInformation newVar1 (First expr_typed)
+	let typedExpr = TypeInformation t1 (First expr_typed)
 	-- return type along with all the constraints
-	return (newVar1, constraints ++ [Consistency t (ProductType newVar1 newVar2)], typedExpr)
+	return (t1, constraints1 ++ constraints2, typedExpr)
 
 -- (Csnd) if expression is a second projection
 generateConstraints (ctx, Second expr) = do
-	-- counter for variable creation
-	i <- get
-	put (i+2)
-	-- create new type variable
-	let newVar1 = newTypeVar i
-	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
-	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(t, constraints1, expr_typed) <- generateConstraints typeAssignment
+	(ProductType t1 t2, constraints2) <- patternMatchProduct t
 	-- build typed expression
-	let typedExpr = TypeInformation newVar2 (Second expr_typed)
+	let typedExpr = TypeInformation t2 (Second expr_typed)
 	-- return type along with all the constraints
-	return (newVar2, constraints ++ [Consistency t (ProductType newVar1 newVar2)], typedExpr)
+	return (t2, constraints1 ++ constraints2, typedExpr)
 
 -- (Crecord) if expression is a record
 generateConstraints (ctx, Record records) = do
@@ -339,10 +323,8 @@ generateConstraints (ctx, Projection label expr typ) = do
 		else do
 			-- get labels
 			let (labels, _) = fromRecordType typ
-			-- get constraints for each type in variant
-			(types, constraints') <- recordComponents labels t
-			-- create record type of type variables
-			let list = zip labels types
+			-- get constraints for each type in record
+			(RecordType list, constraints') <- patternMatchRecord labels t
 			-- let type of expr be a type variable according to the label
 			let finalType = fromJust $ lookup label list
 			-- build typed expression
@@ -363,8 +345,7 @@ generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
-	-- get constraints for two sides of sum type
-	((t1', t2'), constraints') <- sumComponents t
+	(SumType t1' t2', constraints') <- patternMatchSum t
 	-- build for each expression in the application a type assignment
 	let typeAssignment1 = ((var1, t1') : ctx, expr1)
 	let typeAssignment2 = ((var2, t2') : ctx, expr2)
@@ -421,8 +402,9 @@ generateConstraints (ctx, CaseVariant expr alternatives) = do
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
 	-- get constraints for each type in variant
-	(types, constraints') <-
-		variantComponents (fst3 $ fromAlternatives alternatives) t
+	(VariantType list, constraints') <-
+		patternMatchVariant (fst3 $ fromAlternatives alternatives) t
+	let (_, types) = unzip list
 	-- build for each expression a type assignment
 	let typeAssignments = map
 		(\x -> let
@@ -533,7 +515,7 @@ generateConstraints (ctx, Unfold typ expr) = do
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
 	let (Mu var _) = typ
-	(Mu var' typ', constraints2) <- muComponents var t
+	(Mu var' typ', constraints2) <- patternMatchMu var t
 	-- unfold type
 	let t' = unfoldType (var', Mu var' typ') typ'
 	-- build typed expression
@@ -636,8 +618,8 @@ domain t1 t2
 	-- throw error
 	| otherwise = throwError $ "Error: Type " ++ (show t1) ++ " has no domain!!"
 
-fixComponents :: Type -> StateT Int (Except String) (Type, Constraints)
-fixComponents t
+patternMatchArrow :: Type -> StateT Int (Except String) (Type, Constraints)
+patternMatchArrow t
 	-- if t is type variable
 	| isVarType t = do
 		-- create two new type variables t11 and t12
@@ -724,8 +706,8 @@ meetM (t1, c) t2 = do
 	return (t, c ++ constraints)
 
 -- get components of sum type
-sumComponents :: Type -> StateT Int (Except String) ((Type, Type), Constraints)
-sumComponents t
+patternMatchProduct :: Type -> StateT Int (Except String) (Type, Constraints)
+patternMatchProduct t
 	-- if t is type variable
 	| isVarType t = do
 		-- create two new type variables t1 and t2
@@ -734,25 +716,78 @@ sumComponents t
 		let t1 = newTypeVar i
 		let t2 = newTypeVar (i+1)
 		-- return types and equality relation t = t1 + t2
-		return ((t1, t2), [Equality t (SumType t1 t2)])
+		return (ProductType t1 t2, [Equality t (ProductType t1 t2)])
 	-- if t is sum type
-	| isSumType t = do
-		-- let t1 and t2 such that t = t1 + t2
-		let (SumType t1 t2) = t
+	| isProductType t = do
 		-- return types
-		return ((t1,t2), [])
+		return (t, [])
 	-- if t is dynamic type
 	| isDynType t = do
 		-- return dynamic typ
-		return ((DynType, DynType), [])
+		return (ProductType DynType DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a product type!!"
+
+-- get components of variant type
+patternMatchRecord :: [Label] -> Type
+	-> StateT Int (Except String) (Type, Constraints)
+patternMatchRecord labels t
+	-- if t is type variable
+	| isVarType t = do
+		-- number of alternatives
+		let n = length labels
+		-- counter for variable creation
+		i <- get
+		put (i+n+1)
+		-- create new type variables
+		let typeVars = map newTypeVar [i..i+n]
+		-- build type consisting of new type variables
+		let list = zip labels typeVars
+		-- return types and equality relation t = <li:Ti>
+		return (RecordType list, [Equality t (RecordType list)])
+	-- if t is variant type
+	| isRecordType t = do
+		-- return types
+		return (t, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- number of alternatives
+		let n = length labels
+		-- return dynamic type
+		return (RecordType $ zip labels $ replicate n DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a record type!!"
+
+-- get components of sum type
+patternMatchSum :: Type -> StateT Int (Except String) (Type, Constraints)
+patternMatchSum t
+	-- if t is type variable
+	| isVarType t = do
+		-- create two new type variables t1 and t2
+		i <- get
+		put (i+2)
+		let t1 = newTypeVar i
+		let t2 = newTypeVar (i+1)
+		-- return types and equality relation t = t1 + t2
+		return (SumType t1 t2, [Equality t (SumType t1 t2)])
+	-- if t is sum type
+	| isSumType t = do
+		-- return types
+		return (t, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- return dynamic typ
+		return (SumType DynType DynType, [])
 	-- throw error
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a sum type!!"
 
 -- get components of variant type
-variantComponents :: [Label] -> Type
-	-> StateT Int (Except String) ([Type], Constraints)
-variantComponents labels t
+patternMatchVariant :: [Label] -> Type
+	-> StateT Int (Except String) (Type, Constraints)
+patternMatchVariant labels t
 	-- if t is type variable
 	| isVarType t = do
 		-- number of alternatives
@@ -765,58 +800,25 @@ variantComponents labels t
 		-- build type consisting of new type variables
 		let list = zip labels typeVars
 		-- return types and equality relation t = <li:Ti>
-		return (typeVars, [Equality t (VariantType list)])
+		return (VariantType list, [Equality t (VariantType list)])
 	-- if t is variant type
 	| isVariantType t = do
-		let (_, types) = fromVariantType t
 		-- return types
-		return (types, [])
+		return (t, [])
 	-- if t is dynamic type
 	| isDynType t = do
 		-- number of alternatives
 		let n = length labels
 		-- return dynamic type
-		return (replicate n DynType, [])
+		return (VariantType $ zip labels $ replicate n DynType, [])
 	-- throw error
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a variant type!!"
 
--- get components of variant type
-recordComponents :: [Label] -> Type
-	-> StateT Int (Except String) ([Type], Constraints)
-recordComponents labels t
-	-- if t is type variable
-	| isVarType t = do
-		-- number of alternatives
-		let n = length labels
-		-- counter for variable creation
-		i <- get
-		put (i+n+1)
-		-- create new type variables
-		let typeVars = map newTypeVar [i..i+n]
-		-- build type consisting of new type variables
-		let list = zip labels typeVars
-		-- return types and equality relation t = <li:Ti>
-		return (typeVars, [Equality t (RecordType list)])
-	-- if t is variant type
-	| isRecordType t = do
-		let (_, types) = fromRecordType t
-		-- return types
-		return (types, [])
-	-- if t is dynamic type
-	| isDynType t = do
-		-- number of alternatives
-		let n = length labels
-		-- return dynamic type
-		return (replicate n DynType, [])
-	-- throw error
-	| otherwise =
-		throwError $ "Error: Type " ++ (show t) ++ " is not a record type!!"
-
 -- get components of recursive type
-muComponents :: Var -> Type
+patternMatchMu :: Var -> Type
 	-> StateT Int (Except String) (Type, Constraints)
-muComponents var t
+patternMatchMu var t
 	-- if t is type variable
 	| isVarType t = do
 		-- counter for variable creation

@@ -511,35 +511,36 @@ getRightSide = Abstraction "t" $ CaseVariant (Unfold treeType $ Variable "t")
 sizeTree = Fix $ Abstraction "s" $ Abstraction "t" $
 	CaseVariant (Unfold treeType $ Variable "t")
 		[("Leaf", "", Int 0),
-		("Node", "x", Addition
-			(Application (Variable "s") (Projection "Left" (Variable "x")
-				(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)])))
-			(Application (Variable "s") (Projection "Right" (Variable "x")
-				(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)]))))]
+		("Node", "x", Addition (Int 1)
+			(Addition
+				(Application (Variable "s") (Projection "Left" (Variable "x")
+					(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)])))
+				(Application (Variable "s") (Projection "Right" (Variable "x")
+					(RecordType [("Value", IntType), ("Left", treeType), ("Right", treeType)])))))]
 
 insertTree = Abstraction "i" $ Abstraction "t" $
 	CaseVariant (Unfold treeType $ Variable "t")
-	[("Leaf", "leaf", Fold treeType $
-		Tag "Node" (Record
-			[("Value", Variable "i"),
-			("Left", emptyTree),
-			("Right", emptyTree)]) treeType'),
-	("Node", "node", Let "num" (Application getNumberNode (Variable "node")) $
-		CaseVariant (compare_func (Variable "i") (Variable "num"))
-			[("LT", "", Fold treeType $
-				Tag "Node" (Record
-					[("Value", Variable "num"),
-					("Left", Let "l" (Application getLeftSide (Variable "node")) $
-						Application (Application insertTree (Variable "i")) (Variable "l")),
-					("Right", Application getRightSide (Variable "node"))]) treeType'),
-			("EQ", "", Fold treeType $
-				Tag "Node" (Record
-					[("Value", Variable "num"),
-					("Left", Application getLeftSide (Variable "node")),
-					("Right", Application getRightSide (Variable "node"))]) treeType'),
-			("GT", "", Fold treeType $
-				Tag "Node" (Record
-					[("Value", Variable "num"),
-					("Left", Application getLeftSide (Variable "node")),
-					("Right", Let "r" (Application getRightSide (Variable "node")) $
-						Application (Application insertTree (Variable "i")) (Variable "r"))]) treeType')])]
+		[("Leaf", "leaf", Fold treeType $
+			Tag "Node" (Record
+				[("Value", Variable "i"),
+				("Left", emptyTree),
+				("Right", emptyTree)]) treeType'),
+		("Node", "node", Let "num" (Application getNumberNode (Variable "node")) $
+			CaseVariant (compare_func (Variable "i") (Variable "num"))
+				[("LT", "", Fold treeType $
+					Tag "Node" (Record
+						[("Value", Variable "num"),
+						("Left", Let "l" (Application getLeftSide (Variable "node")) $
+							Application (Application insertTree (Variable "i")) (Variable "l")),
+						("Right", Application getRightSide (Variable "node"))]) treeType'),
+				("EQ", "", Fold treeType $
+					Tag "Node" (Record
+						[("Value", Variable "num"),
+						("Left", Application getLeftSide (Variable "node")),
+						("Right", Application getRightSide (Variable "node"))]) treeType'),
+				("GT", "", Fold treeType $
+					Tag "Node" (Record
+						[("Value", Variable "num"),
+						("Left", Application getLeftSide (Variable "node")),
+						("Right", Let "r" (Application getRightSide (Variable "node")) $
+							Application (Application insertTree (Variable "i")) (Variable "r"))]) treeType')])]

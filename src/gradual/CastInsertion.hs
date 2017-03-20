@@ -362,6 +362,6 @@ joinType (VariantType list1) (VariantType list2) =
 			$ zip list1 list2
 	in VariantType list
 joinType t1 t2
-	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1)) &&
-	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2)) =
+	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isMuType t1)) &&
+	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isMuType t2)) =
 		if (isDynType t1) then t2 else t1
