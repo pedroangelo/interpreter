@@ -159,10 +159,11 @@ generateConstraints (ctx, Fix expr) = do
 	-- build type assignment
 	let typeAssignment1 = (ctx, expr)
 	-- obtain type and generate constraints for type assignment
-	(t1, constraints, expr_typed) <- generateConstraints typeAssignment1
+	(t1, constraints1, expr_typed) <- generateConstraints typeAssignment1
+	(ArrowType t11 t12, constraints2) <- fixComponents t1
 	-- build typed expression
-	let typedExpr = TypeInformation newVar1 (Fix expr_typed)
-	return (newVar1, constraints ++ [Consistency t1 (ArrowType newVar1 newVar2)], typedExpr)
+	let typedExpr = TypeInformation t11 (Fix expr_typed)
+	return (t11, constraints1 ++ constraints2, typedExpr)
 
 -- (Cletrec) if expression is a recursive let binding
 generateConstraints (ctx, LetRec var expr1 expr2) = do
@@ -634,6 +635,30 @@ domain t1 t2
 		return [Consistency DynType t2]
 	-- throw error
 	| otherwise = throwError $ "Error: Type " ++ (show t1) ++ " has no domain!!"
+
+fixComponents :: Type -> StateT Int (Except String) (Type, Constraints)
+fixComponents t
+	-- if t is type variable
+	| isVarType t = do
+		-- create two new type variables t11 and t12
+		i <- get
+		put (i+2)
+		let t1 = newTypeVar i
+		let t2 = newTypeVar (i+1)
+		-- return constraints t11 ~C t2 and t1 =C t11 -> t12
+		return (ArrowType t1 t2, [Consistency t1 t2, Equality t (ArrowType t1 t2)])
+	-- if t1 is arrow type
+	| isArrowType t = do
+		-- let t1 and t2 such that t = t1 -> t2
+		let (ArrowType t1 t2) = t
+		-- return constraints t11 ~C t2
+		return (t, [Consistency t1 t2])
+	-- if t1 is dynamic type
+	| isDynType t = do
+		-- return constraints ? ~C t2
+		return (ArrowType DynType DynType, [])
+	-- throw error
+	| otherwise = throwError $ "Error: Type " ++ (show t) ++ " in not an arrow type!!"
 
 -- generate constraints and type for meet relation
 meet :: Type -> Type -> Except String (Type, Constraints)

@@ -448,9 +448,9 @@ cons = Abstraction "n" $ Abstraction "l" $ Fold intList $ RightTag (Pair (Variab
 
 isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", Bool True) ("x", Bool False)
 
-hd = Annotation "l" DynType $ Case (Unfold intList $ Variable "l") ("x", (Int (-1))) ("x", First $ Variable "x")
+hd = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", (Int (-1))) ("x", First $ Variable "x")
 
-tl = Annotation "l" DynType $ Case (Unfold intList $ Variable "l") ("x", nil) ("x", Second $ Variable "x")
+tl = Abstraction "l" $ Case (Unfold intList $ Variable "l") ("x", nil) ("x", Second $ Variable "x")
 
 list1 = Application (Application cons (Int 1)) nil
 
