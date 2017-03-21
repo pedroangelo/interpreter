@@ -361,6 +361,10 @@ joinType (VariantType list1) (VariantType list2) =
 				in (label, joinType t1 t2))
 			$ zip list1 list2
 	in VariantType list
+joinType (Mu var1 t1) (Mu var2 t2) =
+	let
+		t = joinType t1 t2
+	in Mu var1 t
 joinType t1 t2
 	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isMuType t1)) &&
 	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isMuType t2)) =

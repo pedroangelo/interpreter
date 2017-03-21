@@ -153,11 +153,11 @@ generateConstraints (ctx, Fix expr) = do
 	-- build type assignment
 	let typeAssignment1 = (ctx, expr)
 	-- obtain type and generate constraints for type assignment
-	(t1, constraints1, expr_typed) <- generateConstraints typeAssignment1
-	(ArrowType t11 t12, constraints2) <- patternMatchArrow t1
+	(t, constraints1, expr_typed) <- generateConstraints typeAssignment1
+	(ArrowType t1 t2, constraints2) <- patternMatchArrow t
 	-- build typed expression
-	let typedExpr = TypeInformation t11 (Fix expr_typed)
-	return (t11, constraints1 ++ constraints2, typedExpr)
+	let typedExpr = TypeInformation t1 (Fix expr_typed)
+	return (t1, constraints1 ++ constraints2 ++ [Consistency t1 t2], typedExpr)
 
 -- (Cletrec) if expression is a recursive let binding
 generateConstraints (ctx, LetRec var expr1 expr2) = do
@@ -627,14 +627,14 @@ patternMatchArrow t
 		put (i+2)
 		let t1 = newTypeVar i
 		let t2 = newTypeVar (i+1)
-		-- return constraints t11 ~C t2 and t1 =C t11 -> t12
-		return (ArrowType t1 t2, [Consistency t1 t2, Equality t (ArrowType t1 t2)])
+		-- return constraints t1 =C t11 -> t12
+		return (ArrowType t1 t2, [Equality t (ArrowType t1 t2)])
 	-- if t1 is arrow type
 	| isArrowType t = do
 		-- let t1 and t2 such that t = t1 -> t2
 		let (ArrowType t1 t2) = t
 		-- return constraints t11 ~C t2
-		return (t, [Consistency t1 t2])
+		return (t, [])
 	-- if t1 is dynamic type
 	| isDynType t = do
 		-- return constraints ? ~C t2
