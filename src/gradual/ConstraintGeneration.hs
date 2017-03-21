@@ -555,6 +555,18 @@ generateConstraints (ctx, e@(TypeInformation typ expr)) = do
 	-- return type along with all the constraints
 	return (t, constraints, e)
 
+-- (Cerr) if expression if an error
+generateConstraints (ctx, e@(Error msg)) = do
+	-- counter for variable creation
+	i <- get
+	put (i+1)
+	-- create new type variable
+	let newVar1 = newTypeVar i
+	-- build typed expression
+	let typedExpr = TypeInformation newVar1 (Error msg)
+	-- return type along with all the constraints
+	return (newVar1, [], typedExpr)
+
 -- Replace type parameters with type variables
 replaceQuantifiedVariables :: Type -> State Int Type
 replaceQuantifiedVariables (ForAll var typ) = do

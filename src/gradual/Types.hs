@@ -33,6 +33,7 @@ data Constraint
 
 type Label = String
 type Var = String
+type Message = String
 
 -- MAPPING
 

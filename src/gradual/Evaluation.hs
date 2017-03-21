@@ -26,6 +26,9 @@ evaluate e@(Application expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -51,6 +54,8 @@ evaluate e@(Application expr1 expr2)
 evaluate e@(Ascription expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- remove ascription
 	| isValue expr = evaluationStyle $ expr
 	| otherwise =
@@ -73,6 +78,9 @@ evaluate e@(Let var expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -84,6 +92,8 @@ evaluate e@(Let var expr1 expr2)
 evaluate e@(Fix expr)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -111,6 +121,10 @@ evaluate e@(If expr1 expr2 expr3)
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
 	| isBlame expr3 = expr3
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
+	| isError expr3 = expr3
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -125,6 +139,9 @@ evaluate e@(Addition expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -145,6 +162,9 @@ evaluate e@(Subtraction expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -165,6 +185,9 @@ evaluate e@(Multiplication expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -185,6 +208,9 @@ evaluate e@(Division expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -205,6 +231,9 @@ evaluate e@(Equal expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -225,6 +254,9 @@ evaluate e@(NotEqual expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -245,6 +277,9 @@ evaluate e@(LesserThan expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -265,6 +300,9 @@ evaluate e@(GreaterThan expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -285,6 +323,9 @@ evaluate e@(LesserEqualTo expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -305,6 +346,9 @@ evaluate e@(GreaterEqualTo expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -328,6 +372,9 @@ evaluate e@(Pair expr1 expr2)
 	-- push blames to top level
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr1
 	| not $ isValue expr1 =
 		let v1 = evaluate expr1
@@ -342,6 +389,8 @@ evaluate e@(Pair expr1 expr2)
 evaluate e@(First expr)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -362,6 +411,8 @@ evaluate e@(First expr)
 evaluate e@(Second expr)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -384,6 +435,10 @@ evaluate e@(Record records)
 	| any isBlame $ exprs =
 		let	blames = filter isBlame exprs
 		in head blames
+	-- push errors to the top level
+	| any isError $ exprs =
+		let	errors = filter isError exprs
+		in head errors
 	-- reduce expressions
 	| any (not . isValue) exprs =
 		let	exprs' = map evaluate exprs
@@ -395,6 +450,8 @@ evaluate e@(Record records)
 evaluate e@(Projection label expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -423,6 +480,10 @@ evaluate e@(Case expr (var1, expr1) (var2, expr2))
 	| isBlame expr = expr
 	| isBlame expr1 = expr1
 	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr = expr
+	| isError expr1 = expr1
+	| isError expr2 = expr2
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -449,6 +510,8 @@ evaluate e@(Case expr (var1, expr1) (var2, expr2))
 evaluate e@(LeftTag expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -459,6 +522,8 @@ evaluate e@(LeftTag expr typ)
 evaluate e@(RightTag expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -472,6 +537,11 @@ evaluate e@(CaseVariant expr alternatives)
 	| any isBlame $ trd3 $ fromAlternatives alternatives = let
 		blames = filter isBlame (trd3 $ fromAlternatives alternatives)
 		in head blames
+	-- push errors to top level
+	| isError expr = expr
+	| any isError $ trd3 $ fromAlternatives alternatives = let
+		errors = filter isError (trd3 $ fromAlternatives alternatives)
+		in head errors
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -511,6 +581,8 @@ evaluate e@(CaseVariant expr alternatives)
 evaluate e@(Tag label expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -521,6 +593,8 @@ evaluate e@(Tag label expr typ)
 evaluate e@(Fold typ expr)
 	-- push blame to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -531,6 +605,8 @@ evaluate e@(Fold typ expr)
 evaluate e@(Unfold typ expr)
 	-- push blame to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
@@ -557,6 +633,8 @@ evaluate e@(TypeInformation typ expr) = expr
 evaluate e@(Cast t1 t2 expr)
 	-- push blame to top level
 	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
 	-- values don't reduce
 	| isValue e = e
 	-- evaluate inside a cast

@@ -62,6 +62,8 @@ data Expression
 	| Cast Type Type Expression
 	-- Blame
 	| Blame Type String
+	-- Errors
+	| Error Message
 	deriving (Show, Eq)
 
 type Alternatives = [Alternative]
@@ -115,6 +117,7 @@ mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
 mapExpression f e@(TypeInformation typ expr) = f (TypeInformation typ (mapExpression f expr))
 mapExpression f e@(Cast type1 type2 expr) = f (Cast type1 type2 (mapExpression f expr))
 mapExpression f e@(Blame typ label) = f e
+mapExpression f e@(Error msg) = f e
 
 -- CHECKS
 
@@ -293,15 +296,20 @@ isTypeInformation :: Expression -> Bool
 isTypeInformation (TypeInformation _ _) = True
 isTypeInformation _ = False
 
--- check if it a cast
+-- check if is a cast
 isCast :: Expression -> Bool
 isCast (Cast _ _ _) = True
 isCast _ = False
 
--- check if it blame
+-- check if is a blame
 isBlame :: Expression -> Bool
 isBlame (Blame _ _) = True
 isBlame _ = False
+
+-- check if is an error
+isError :: Expression -> Bool
+isError (Error _) = True
+isError _ = False
 
 -- check if is a value
 isValue :: Expression -> Bool
@@ -317,7 +325,8 @@ isValue e =
 	(isTag e && isValueVariants e) ||
 	isFold e ||
 	isValueCast e ||
-	isBlame e
+	isBlame e ||
+	isError e
 
 -- check if pair is a value
 isValuePair :: Expression -> Bool
@@ -530,6 +539,9 @@ substitute s@(old, new) e@(Cast t1 t2 expr) =
 
 -- if expression is a blame, don't propagate substitutions
 substitute s@(old, new) e@(Blame t1 label) = e
+
+-- if expression is a error, don't propagate substitutions
+substitute s@(old, new) e@(Error msg) = e
 
 -- substitution for case expressions
 substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Expression)

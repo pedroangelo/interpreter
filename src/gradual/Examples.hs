@@ -463,11 +463,11 @@ isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l")
 	("x", Bool False)
 
 hd = Abstraction "l" $ Case (Unfold intList $ Variable "l")
-	("x", (Int (-1)))
+	("x", (Error "*** Exception: empty list"))
 	("x", First $ Variable "x")
 
 tl = Abstraction "l" $ Case (Unfold intList $ Variable "l")
-	("x", nil)
+	("x", (Error "*** Exception: empty list"))
 	("x", Second $ Variable "x")
 
 list1 = Application (Application cons (Int 1)) nil

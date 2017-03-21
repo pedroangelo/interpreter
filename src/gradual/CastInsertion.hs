@@ -288,6 +288,9 @@ insertCasts e@(TypeInformation typ (Unfold t expr)) =
 		cast = Cast pm (Mu var' typ') expr'
 	in TypeInformation finalType $ Unfold t cast
 
+-- if expression is an error
+insertCasts e@(TypeInformation _ (Error _)) = e
+
 -- obtain pattern match type for arrow
 patternMatchArrow :: Type -> Type
 patternMatchArrow e@(ArrowType type1 type2) = e
