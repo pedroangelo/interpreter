@@ -33,7 +33,7 @@ insertCasts e@(TypeInformation typ (Application expr1 expr2)) =
 		-- build casts
 		cast1 = Cast t1 d1 expr1'
 		cast2 = Cast t2 d2 expr2'
-	in TypeInformation t $ Application cast1 cast2
+	in TypeInformation typ $ Application cast1 cast2
 
 -- if expression is an ascription
 insertCasts e@(TypeInformation typ (Ascription expr typ')) =
@@ -68,7 +68,7 @@ insertCasts e@(TypeInformation typ (Fix expr)) =
 		ArrowType d _ = p
 		-- build casts
 		cast = Cast t (ArrowType d d) expr'
-	in TypeInformation d $ Fix cast
+	in TypeInformation typ $ Fix cast
 
 -- if expression is a recursive let binding
 insertCasts e@(TypeInformation typ (LetRec var expr1 expr2)) =
@@ -82,7 +82,7 @@ insertCasts e@(TypeInformation typ (LetRec var expr1 expr2)) =
 		TypeInformation t2 _ = expr2'
 		-- build casts
 		cast = Cast t1' t1 expr1'
-	in TypeInformation t2 $ LetRec var cast expr2'
+	in TypeInformation typ $ LetRec var cast expr2'
 
 -- if expression is a conditional statement
 insertCasts e@(TypeInformation typ (If expr1 expr2 expr3)) =
@@ -100,7 +100,7 @@ insertCasts e@(TypeInformation typ (If expr1 expr2 expr3)) =
 		cast1 = Cast t1 BoolType expr1'
 		cast2 = Cast t2 d expr2'
 		cast3 = Cast t3 d expr3'
-	in TypeInformation d $ If cast1 cast2 cast3
+	in TypeInformation typ $ If cast1 cast2 cast3
 
 -- if expression is an arithmetic or relational operator
 insertCasts e@(TypeInformation typ expr)
@@ -121,7 +121,7 @@ insertCasts e@(TypeInformation typ expr)
 				| isSubtraction expr = Subtraction cast1 cast2
 				| isMultiplication expr = Multiplication cast1 cast2
 				| isDivision expr = Division cast1 cast2
-		in TypeInformation IntType cast
+		in TypeInformation typ cast
 	-- if expression is equality, not equality, lesser than,
 	-- greater than, lesser than or equal to or greater than or equal to check
 	| isRelationalOperator expr =
@@ -142,7 +142,7 @@ insertCasts e@(TypeInformation typ expr)
 				| isGreaterThan expr = GreaterThan cast1 cast2
 				| isLessEqualTo expr = LesserEqualTo cast1 cast2
 				| isGreaterEqualTo expr = GreaterEqualTo cast1 cast2
-		in TypeInformation BoolType cast
+		in TypeInformation typ cast
 	-- retrieve sub expressions from the operator
 	where (expr1, expr2) = fromOperator expr
 
@@ -159,7 +159,7 @@ insertCasts e@(TypeInformation typ (Pair expr1 expr2)) =
 		-- build types
 		TypeInformation t1 _ = expr1'
 		TypeInformation t2 _ = expr2'
-	in TypeInformation (ProductType t1 t2) $ Pair expr1' expr2'
+	in TypeInformation typ $ Pair expr1' expr2'
 
 -- if expression is a first projection
 insertCasts e@(TypeInformation typ (First expr)) =
@@ -172,7 +172,7 @@ insertCasts e@(TypeInformation typ (First expr)) =
 		ProductType t1 t2 = pm'
 		-- build casts
 		cast = Cast pm pm' expr'
-	in TypeInformation t1 $ First cast
+	in TypeInformation typ $ First cast
 
 -- if expression is a second projection
 insertCasts e@(TypeInformation typ (Second expr)) =
@@ -185,7 +185,7 @@ insertCasts e@(TypeInformation typ (Second expr)) =
 		ProductType t1 t2 = pm'
 		-- build casts
 		cast = Cast pm pm' expr'
-	in TypeInformation t2 $ Second cast
+	in TypeInformation typ $ Second cast
 
 -- if expression is a record
 insertCasts e@(TypeInformation typ (Record records)) =
@@ -196,15 +196,15 @@ insertCasts e@(TypeInformation typ (Record records)) =
 		(labels, exprs) = fromRecords recordsCasts
 		-- get types
 		types = map fromTypeInformation exprs
-	in TypeInformation (RecordType $ zip labels types) $ Record recordsCasts
+	in TypeInformation typ $ Record recordsCasts
 
 -- if expression is a projection
-insertCasts e@(TypeInformation _ (Projection label expr typ)) =
+insertCasts e@(TypeInformation typ (Projection label expr typ')) =
 	let
 		-- insert casts
 		expr' = insertCasts expr
 		-- get labels
-		(labels, _) = fromRecordType typ
+		(labels, _) = fromRecordType typ'
 		-- buid types
 		TypeInformation pm _ = expr'
 		RecordType pm' = patternMatchRecords pm labels
@@ -212,7 +212,7 @@ insertCasts e@(TypeInformation _ (Projection label expr typ)) =
 		cast = Cast pm (RecordType pm') expr'
 		-- get type
 		t = fromJust $ lookup label pm'
-	in TypeInformation t $ Projection label cast typ
+	in TypeInformation typ $ Projection label cast typ'
 
 -- if expression is a case
 insertCasts e@(TypeInformation typ (Case expr (var1, expr1) (var2, expr2))) =
@@ -226,21 +226,20 @@ insertCasts e@(TypeInformation typ (Case expr (var1, expr1) (var2, expr2))) =
 		TypeInformation t1 _ = expr1'
 		TypeInformation t2 _ = expr2'
 		pm' = patternMatchSum pm
-		SumType pm1 pm2 = pm'
 		j = joinType t1 t2
 		-- build casts
 		cast = Cast pm pm' expr'
 		cast1 = Cast t1 j expr1'
 		cast2 = Cast t2 j expr2'
-	in TypeInformation j $ Case cast (var1, cast1) (var2, cast2)
+	in TypeInformation typ $ Case cast (var1, cast1) (var2, cast2)
 
 -- if expression is a left tag
 insertCasts e@(TypeInformation typ (LeftTag expr t)) =
-	TypeInformation t $ LeftTag (insertCasts expr) t
+	TypeInformation typ $ LeftTag (insertCasts expr) t
 
 -- if expression is a left tag
 insertCasts e@(TypeInformation typ (RightTag expr t)) =
-	TypeInformation t $ RightTag (insertCasts expr) t
+	TypeInformation typ $ RightTag (insertCasts expr) t
 
 -- if expression is a variant case
 insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
@@ -264,15 +263,15 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
 		casts = map
 			(\x -> (fst3 $ snd x, snd3 $ snd x, Cast (fst x) j (trd3 $ snd x)))
 			$ zip types alternativesCasts
-	in TypeInformation j $ CaseVariant cast casts
+	in TypeInformation typ $ CaseVariant cast casts
 
 -- if expression is a tag
 insertCasts e@(TypeInformation typ (Tag label expr t)) =
-	TypeInformation t $ Tag label (insertCasts expr) t
+	TypeInformation typ $ Tag label (insertCasts expr) t
 
 -- if expression is a fold
 insertCasts e@(TypeInformation typ (Fold t expr)) =
-	TypeInformation t $ Fold t $ insertCasts expr
+	TypeInformation typ $ Fold t $ insertCasts expr
 
 -- if expression is a unfold
 insertCasts e@(TypeInformation typ (Unfold t expr)) =
@@ -283,10 +282,10 @@ insertCasts e@(TypeInformation typ (Unfold t expr)) =
 		TypeInformation pm _ = expr'
 		Mu var _ = t
 		Mu var' typ' = patternMatchMu pm var
-		finalType = unfoldType (var', t) typ'
+		finalType = unfoldType (var', Mu var' typ') typ'
 		-- build casts
 		cast = Cast pm (Mu var' typ') expr'
-	in TypeInformation finalType $ Unfold t cast
+	in TypeInformation typ $ Unfold t cast
 
 -- if expression is an error
 insertCasts e@(TypeInformation _ (Error _)) = e

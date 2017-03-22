@@ -659,8 +659,10 @@ evaluate e@(Cast t1 t2 expr)
 		let g = getGroundType t2
 		in evaluationStyle $ Cast g t2 $ Cast DynType g expr
 	-- Project types and expression from inner casts
-	where
-		(Cast t1' t2' expr') = expr
+	where (Cast t1' t2' expr') = expr
 
 -- if expression is a blame label
-evaluate e@(Blame t label) = e
+evaluate e@(Blame _ _) = e
+
+-- if expression is an error
+evaluate e@(Error _) = e

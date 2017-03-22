@@ -220,6 +220,8 @@ gcd' = LetRec "gcd"
 
 absolute = Abstraction "x" $
 	If (GreaterEqualTo (Variable "x") (Int 0)) (Variable "x") (Multiplication (Variable "x") (Int (-1)))
+
+test_fix = (Fix $ Abstraction "s" $ Annotation "x" DynType  $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "s") (Subtraction (Variable "x") (Int 1))) (Int 0))
 -- Examples to test let and letrec
 
 letrec_1 = LetRec "ten"
@@ -450,7 +452,7 @@ calculateCenter = Abstraction "shape" $
 -- Recursive Types
 
 -- List of Int
-intList = Mu "L" $ SumType (UnitType) (ProductType IntType (VarType "L"))
+intList = Mu "L" $ SumType (UnitType) (ProductType DynType (VarType "L"))
 intList' = unfoldType ("L", intList) intList
 
 nil = Fold intList $ LeftTag Unit intList'
@@ -472,7 +474,11 @@ tl = Abstraction "l" $ Case (Unfold intList $ Variable "l")
 
 list1 = Application (Application cons (Int 1)) nil
 
-list2 = Application (Application cons (Int 2)) list1
+list21 = Application (Application cons (Int 2)) list1
+
+listtrue = Application (Application cons (Bool True)) nil
+
+list1true = Application (Application cons (Int 1)) listtrue
 
 sumlist = Fix $ Abstraction "s" $ Abstraction "l" $
 	If (Application (isnil) (Variable "l"))

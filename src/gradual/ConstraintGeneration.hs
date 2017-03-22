@@ -156,7 +156,7 @@ generateConstraints (ctx, Fix expr) = do
 	(t, constraints1, expr_typed) <- generateConstraints typeAssignment1
 	(ArrowType t1 t2, constraints2) <- patternMatchArrow t
 	-- build typed expression
-	let typedExpr = TypeInformation t1 (Fix expr_typed)
+	let typedExpr = TypeInformation t2 (Fix expr_typed)
 	return (t1, constraints1 ++ constraints2 ++ [Consistency t1 t2], typedExpr)
 
 -- (Cletrec) if expression is a recursive let binding
@@ -485,11 +485,6 @@ generateConstraints (ctx, Tag label expr typ) = do
 
 -- (Cfold) if expression is a fold
 generateConstraints (ctx, Fold typ expr) = do
-	-- counter for variable creation
-	i <- get
-	put (i+1)
-	-- create new type variable
-	let newVar1 = newTypeVar i
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
@@ -500,30 +495,23 @@ generateConstraints (ctx, Fold typ expr) = do
 	-- build typed expression
 	let typedExpr = TypeInformation typ (Fold typ expr_typed)
 	-- return type along with all the constraints
-	return (typ, constraints ++	[Consistency t' t], typedExpr)
+	return (typ, constraints ++ [Consistency t' t], typedExpr)
 
--- {-
 -- (Cunfold) if expression is a unfold
 generateConstraints (ctx, Unfold typ expr) = do
-	-- counter for variable creation
-	i <- get
-	put (i+1)
-	-- create new type variable
-	let newVar1 = newTypeVar i
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
-	let (Mu var _) = typ
+	let (Mu var typ'') = typ
 	(Mu var' typ', constraints2) <- patternMatchMu var t
 	-- unfold type
-	let t' = unfoldType (var', Mu var' typ') typ'
+	let unfoldedType = unfoldType (var, Mu var typ'') typ''
 	-- build typed expression
-	let typedExpr = TypeInformation t' (Unfold typ expr_typed)
+	let typedExpr = TypeInformation unfoldedType (Unfold typ expr_typed)
 	-- return type along with all the constraints
-	return (t', constraints ++ constraints2 ++
+	return (unfoldedType, constraints ++ constraints2 ++
 		[Consistency typ (Mu var' typ')], typedExpr)
--- -}
 
 {-
 -- (Cunfold) if expression is a unfold
