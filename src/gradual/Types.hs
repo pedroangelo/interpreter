@@ -10,17 +10,31 @@ type Bindings = (Var, Type)
 
 -- Types in λ-calculus and extensions
 data Type
+	-- Type variable
 	= VarType Var
+	-- Arrow type: Type -> Type
 	| ArrowType Type Type
+	-- Integer type
 	| IntType
+	-- Boolean type
 	| BoolType
+	-- Dynamic type
 	| DynType
+	-- For all quantifier: ∀Var.Type
 	| ForAll Var Type
+	-- Unit type: ()
 	| UnitType
+	-- Product type: Type × Type
 	| ProductType Type Type
+	-- Tuple type: {Types}
+	| TupleType [Type]
+	-- Record type: {Labels:Types}
 	| RecordType [(Label, Type)]
+	-- Sum type: Type + Type
 	| SumType Type Type
+	-- Variant type: <Labels:Types>
 	| VariantType [(Label, Type)]
+	-- Recursive type: µVar.Type
 	| Mu Var Type
 	deriving (Show, Eq)
 
@@ -47,6 +61,7 @@ mapType f t@(DynType) = f t
 mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
 mapType f t@(UnitType) = f t
 mapType f t@(ProductType t1 t2) = f (ProductType (mapType f t1) (mapType f t2))
+mapType f t@(TupleType ts) = f (TupleType $ map (mapType f) ts)
 mapType f t@(RecordType ts) = f (RecordType $ map (\x -> (fst x, mapType f $ snd x)) ts)
 mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
 mapType f t@(VariantType ts) = f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
@@ -54,67 +69,72 @@ mapType f t@(Mu var t') = f (Mu var $ mapType f t')
 
 -- CHECKS
 
--- check if is variable type
+-- check if it's a variable type
 isVarType :: Type -> Bool
 isVarType (VarType _) = True
 isVarType _ = False
 
--- check if is function type
+-- check if it's a function type
 isArrowType :: Type -> Bool
 isArrowType (ArrowType _ _) = True
 isArrowType _ = False
 
--- check if is integer type
+-- check if it's an integer type
 isIntType :: Type -> Bool
 isIntType (IntType) = True
 isIntType _ = False
 
--- check if is boolean type
+-- check if it's a boolean type
 isBoolType :: Type -> Bool
 isBoolType (BoolType) = True
 isBoolType _ = False
 
--- check if is dynamic type
+-- check if it's a dynamic type
 isDynType :: Type -> Bool
 isDynType (DynType) = True
 isDynType _ = False
 
--- check if is for all quantifier
+-- check if it's a for all quantifier
 isForAllType :: Type -> Bool
 isForAllType (ForAll _ _) = True
 isForAllType _ = False
 
--- check if is unit type
+-- check if it's an unit type
 isUnitType :: Type -> Bool
 isUnitType UnitType = True
 isUnitType _ = False
 
--- check if is product type
+-- check if it's a product type
 isProductType :: Type -> Bool
 isProductType (ProductType _ _) = True
 isProductType _ = False
 
--- check if is record type
+-- check if it's a tuple type
+isTupleType :: Type -> Bool
+isTupleType (TupleType _) = True
+isTupleType _ = False
+
+-- check if it's a record type
 isRecordType :: Type -> Bool
 isRecordType (RecordType _) = True
 isRecordType _ = False
 
--- check if is sum type
+-- check if it's a sum type
 isSumType :: Type -> Bool
 isSumType (SumType _ _) = True
 isSumType _ = False
 
--- check if is variant type
+-- check if it's a variant type
 isVariantType :: Type -> Bool
 isVariantType (VariantType _) = True
 isVariantType _ = False
 
--- check if is recursive type
+-- check if it's a recursive type
 isMuType :: Type -> Bool
 isMuType (Mu _ _) = True
 isMuType _ = False
 
--- check if is ground type
+-- check if it's a ground type
 isGroundType :: Type -> Bool
 isGroundType (ArrowType DynType DynType) = True
 isGroundType IntType = True
@@ -122,6 +142,7 @@ isGroundType BoolType = True
 isGroundType (ForAll _ DynType) = True
 isGroundType (UnitType) = True
 isGroundType (ProductType DynType DynType) = True
+isGroundType (TupleType ts) = all isDynType ts
 isGroundType (RecordType ts) = all (\x -> isDynType $ snd x) ts
 isGroundType (SumType DynType DynType) = True
 isGroundType (VariantType ts) = all (\x -> isDynType $ snd x) ts
@@ -132,7 +153,7 @@ isGroundType _ = False
 sameGround :: Type -> Type -> Bool
 sameGround t1 t2 = getGroundType t1 == getGroundType t2
 
--- compare labels of variant types
+-- compare labels of record and variant types
 compareLabels :: Type -> Type -> Bool
 compareLabels t1@(RecordType list1) t2@(RecordType list2) =
 	let
@@ -146,9 +167,13 @@ compareLabels t1@(VariantType list1) t2@(VariantType list2) =
 	in labels1 == labels2
 compareLabels _ _ = False
 
--- compare variables of forall and mu types
+-- compare variables of mu type
 compareVars :: Type -> Type -> Bool
 compareVars (Mu var1 _) (Mu var2 _) = var1 == var2
+
+-- compare size of tuple type
+compareSize :: Type -> Type -> Bool
+compareSize (TupleType ts1) (TupleType ts2) = length ts1 == length ts2
 
 -- PROJECTIONS
 
@@ -160,6 +185,7 @@ getGroundType BoolType = BoolType
 getGroundType (ForAll _ _) = ForAll "" DynType
 getGroundType (UnitType) = UnitType
 getGroundType (ProductType _ _) = ProductType DynType DynType
+getGroundType (TupleType ts) = TupleType $ map (\x -> DynType) ts
 getGroundType (RecordType ts) = RecordType $ map (\x -> (fst x, DynType)) ts
 getGroundType (SumType _ _) = SumType DynType DynType
 getGroundType (VariantType ts) = VariantType $ map (\x -> (fst x, DynType)) ts
@@ -192,6 +218,8 @@ substituteType s@(old, new) t@(ForAll var t') =
 substituteType s@(old, new) t@(UnitType) = t
 substituteType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (substituteType s t1) (substituteType s t2)
+substituteType s@(old, new) t@(TupleType ts) =
+	TupleType $ map (substituteType s) ts
 substituteType s@(old, new) t@(RecordType ts) =
 	RecordType $ map (\x -> (fst x, substituteType s $ snd x)) ts
 substituteType s@(old, new) t@(SumType t1 t2) =
@@ -220,6 +248,8 @@ unfoldType s@(old, new) t@(DynType) = t
 unfoldType s@(old, new) t@(UnitType) = t
 unfoldType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (unfoldType s t1) (unfoldType s t2)
+unfoldType s@(old, new) t@(TupleType ts) =
+	TupleType $ map (unfoldType s) ts
 unfoldType s@(old, new) t@(RecordType ts) =
 	RecordType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
 unfoldType s@(old, new) t@(SumType t1 t2) =
@@ -263,6 +293,13 @@ countTypeVariable t@(ProductType t1 t2) =
 		(exclude1, include1) = countTypeVariable t1
 		(exclude2, include2) = countTypeVariable t2
 	in (exclude1 ++ exclude2, include1 ++ include2)
+countTypeVariable t@(TupleType ts) =
+	let
+		result = map countTypeVariable ts
+		(exclude, include) = foldr1 (\x -> \y ->
+			(nub $ fst x ++ fst y,
+			nub $ snd x ++ snd y)) result
+	in (exclude, include)
 countTypeVariable t@(RecordType ts) =
 	let
 		result = map (countTypeVariable . snd) ts

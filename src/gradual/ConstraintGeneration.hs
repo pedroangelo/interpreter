@@ -156,7 +156,7 @@ generateConstraints (ctx, Fix expr) = do
 	(t, constraints1, expr_typed) <- generateConstraints typeAssignment1
 	(ArrowType t1 t2, constraints2) <- patternMatchArrow t
 	-- build typed expression
-	let typedExpr = TypeInformation t2 (Fix expr_typed)
+	let typedExpr = TypeInformation t1 (Fix expr_typed)
 	return (t1, constraints1 ++ constraints2 ++ [Consistency t1 t2], typedExpr)
 
 -- (Cletrec) if expression is a recursive let binding
@@ -185,7 +185,7 @@ generateConstraints (ctx, If expr1 expr2 expr3) = do
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	let typeAssignment3 = (ctx, expr3)
-	-- obtain type and constraints for both expressions
+	-- obtain type and constraints for all the expressions
 	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
 	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
 	(t3, constraints3, expr3_typed) <- generateConstraints typeAssignment3
@@ -250,7 +250,7 @@ generateConstraints (ctx, Unit) = do
 
 -- (Cpair) if expression is a pair
 generateConstraints (ctx, Pair expr1 expr2) = do
-	-- build for each expression in the application a type assignment
+	-- build for each expression a type assignment
 	let typeAssignment1 = (ctx, expr1)
 	let typeAssignment2 = (ctx, expr2)
 	-- obtain type and constraints for both expressions
@@ -285,6 +285,53 @@ generateConstraints (ctx, Second expr) = do
 	-- return type along with all the constraints
 	return (t2, constraints1 ++ constraints2, typedExpr)
 
+-- (Ctuple) if expression is a tuple
+generateConstraints (ctx, Tuple exprs) = do
+	-- build for each expression a type assignment
+	let typeAssignments = map (\x -> (ctx, x)) exprs
+	-- obtain type and constraints for the expressions
+	results <- mapM generateConstraints typeAssignments
+	-- get resulting types and constraints
+	let (types, cs, exprs_typed) = unzip3 results
+	-- build typed expression
+	let typedExpr = TypeInformation (TupleType types) (Tuple exprs_typed)
+	-- return type along with all the constraints
+	return (TupleType types, concat cs, typedExpr)
+
+-- (Cprojectiontuple) if expression is a projection from tuples
+generateConstraints (ctx, ProjectionTuple index expr typ) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	-- if expression is annotated with a tuple type
+	if isTupleType typ then do
+		-- retrieve type
+		let TupleType types = typ
+		-- if tuple is smaller than projection index
+		if length types <= index then do
+			-- build typed expression
+			let typedExpr = TypeInformation UnitType (ProjectionTuple index expr_typed typ)
+			let cs = [Equality typ (TupleType [UnitType])]
+			return (UnitType, constraints ++ cs, typedExpr)
+		else do
+			let size = length types
+			-- get constraints for each type in tuple
+			(TupleType list, constraints') <- patternMatchTuple size t
+			-- let type of expr according to the index
+			let finalType = list !! index
+			-- build typed expression
+			let typedExpr = TypeInformation finalType (ProjectionTuple index expr_typed typ)
+			-- return type along with all the constraints
+			return (finalType, constraints ++ constraints' ++
+				[Consistency (TupleType list) typ], typedExpr)
+	-- if expression is annotated with a wrong type
+	else do
+		-- build typed expression
+		let typedExpr = TypeInformation UnitType (ProjectionTuple index expr_typed typ)
+		let typ' = TupleType [UnitType]
+		return (UnitType, constraints ++ [Equality typ typ'], typedExpr)
+
 -- (Crecord) if expression is a record
 generateConstraints (ctx, Record records) = do
 	-- get labels and types
@@ -302,8 +349,8 @@ generateConstraints (ctx, Record records) = do
 	-- return type along with all the constraints
 	return (RecordType ts, concat cs, typedExpr)
 
--- (Cprojection) if expression is a first projection
-generateConstraints (ctx, Projection label expr typ) = do
+-- (Cprojectionrecords) if expression is a projection from records
+generateConstraints (ctx, ProjectionRecord label expr typ) = do
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
@@ -317,7 +364,7 @@ generateConstraints (ctx, Projection label expr typ) = do
 		-- if type doesn't exist in record
 		if isNothing tagType then do
 			-- build typed expression
-			let typedExpr = TypeInformation UnitType (Projection label expr_typed typ)
+			let typedExpr = TypeInformation UnitType (ProjectionRecord label expr_typed typ)
 			let cs = [Equality typ (RecordType [(label, UnitType)])]
 			return (UnitType, constraints ++ cs, typedExpr)
 		else do
@@ -328,14 +375,14 @@ generateConstraints (ctx, Projection label expr typ) = do
 			-- let type of expr be a type variable according to the label
 			let finalType = fromJust $ lookup label list
 			-- build typed expression
-			let typedExpr = TypeInformation finalType (Projection label expr_typed typ)
+			let typedExpr = TypeInformation finalType (ProjectionRecord label expr_typed typ)
 			-- return type along with all the constraints
 			return (finalType, constraints ++ constraints' ++
 				[Consistency (RecordType list) typ], typedExpr)
 	-- if expression is annotated with a wrong type
 	else do
 		-- build typed expression
-		let typedExpr = TypeInformation UnitType (Projection label expr_typed typ)
+		let typedExpr = TypeInformation UnitType (ProjectionRecord label expr_typed typ)
 		let typ' = RecordType [(label, UnitType)]
 		return (UnitType, constraints ++ [Equality typ typ'], typedExpr)
 
@@ -664,6 +711,17 @@ meet t1 t2
 		(t1', constraints1) <- meet t11 t21
 		(t2', constraints2) <- meet t12 t22
 		return (ProductType t1' t2', constraints1 ++ constraints2)
+	| isTupleType t1 && isTupleType t2 && compareSize t1 t2 = do
+		let TupleType types1 = t1
+		let TupleType types2 = t2
+		let list = zip types1 types2
+		-- run meet for each pair of types
+		results <- mapM (\x -> meet (fst x) (snd x)) list
+		-- get resulting types
+		let ts = map fst results
+		-- get resulting constraints
+		let cs = map snd results
+		return (TupleType ts, concat cs)
 	| isRecordType t1 && isRecordType t2 && compareLabels t1 t2 = do
 		let (labels1, types1) = fromRecordType t1
 		let (_, types2) = fromRecordType t2
@@ -729,36 +787,59 @@ patternMatchProduct t
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a product type!!"
 
--- get components of variant type
+-- get components of tuple type
+patternMatchTuple :: Int -> Type
+	-> StateT Int (Except String) (Type, Constraints)
+patternMatchTuple n t
+	-- if t is type variable
+	| isVarType t = do
+		-- counter for variable creation
+		i <- get
+		put (i+n+1)
+		-- create new type variables
+		let typeVars = map newTypeVar [i..i+n-1]
+		-- return types and equality relation t = <li:Ti>
+		return (TupleType typeVars, [Equality t (TupleType typeVars)])
+	-- if t is tuple type
+	| isTupleType t = do
+		-- return types
+		return (t, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- return dynamic type
+		return (TupleType $ replicate n DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a tuple type!!"
+
+-- get components of record type
 patternMatchRecord :: [Label] -> Type
 	-> StateT Int (Except String) (Type, Constraints)
 patternMatchRecord labels t
 	-- if t is type variable
 	| isVarType t = do
-		-- number of alternatives
-		let n = length labels
 		-- counter for variable creation
 		i <- get
 		put (i+n+1)
 		-- create new type variables
-		let typeVars = map newTypeVar [i..i+n]
+		let typeVars = map newTypeVar [i..i+n-1]
 		-- build type consisting of new type variables
 		let list = zip labels typeVars
-		-- return types and equality relation t = <li:Ti>
+		-- return types and equality relation t = {li:Ti}
 		return (RecordType list, [Equality t (RecordType list)])
-	-- if t is variant type
+	-- if t is record type
 	| isRecordType t = do
 		-- return types
 		return (t, [])
 	-- if t is dynamic type
 	| isDynType t = do
-		-- number of alternatives
-		let n = length labels
 		-- return dynamic type
 		return (RecordType $ zip labels $ replicate n DynType, [])
 	-- throw error
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a record type!!"
+	-- number of fields
+	where n = length labels
 
 -- get components of sum type
 patternMatchSum :: Type -> StateT Int (Except String) (Type, Constraints)
@@ -790,13 +871,11 @@ patternMatchVariant :: [Label] -> Type
 patternMatchVariant labels t
 	-- if t is type variable
 	| isVarType t = do
-		-- number of alternatives
-		let n = length labels
 		-- counter for variable creation
 		i <- get
 		put (i+n+1)
 		-- create new type variables
-		let typeVars = map newTypeVar [i..i+n]
+		let typeVars = map newTypeVar [i..i+n-1]
 		-- build type consisting of new type variables
 		let list = zip labels typeVars
 		-- return types and equality relation t = <li:Ti>
@@ -807,13 +886,13 @@ patternMatchVariant labels t
 		return (t, [])
 	-- if t is dynamic type
 	| isDynType t = do
-		-- number of alternatives
-		let n = length labels
 		-- return dynamic type
 		return (VariantType $ zip labels $ replicate n DynType, [])
 	-- throw error
 	| otherwise =
 		throwError $ "Error: Type " ++ (show t) ++ " is not a variant type!!"
+	-- number of alternatives
+	where n = length labels
 
 -- get components of recursive type
 patternMatchMu :: Var -> Type

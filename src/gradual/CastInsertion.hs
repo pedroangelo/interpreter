@@ -156,9 +156,6 @@ insertCasts e@(TypeInformation typ (Pair expr1 expr2)) =
 		-- insert casts
 		expr1' = insertCasts expr1
 		expr2' = insertCasts expr2
-		-- build types
-		TypeInformation t1 _ = expr1'
-		TypeInformation t2 _ = expr2'
 	in TypeInformation typ $ Pair expr1' expr2'
 
 -- if expression is a first projection
@@ -182,24 +179,37 @@ insertCasts e@(TypeInformation typ (Second expr)) =
 		-- buid types
 		TypeInformation pm _ = expr'
 		pm' = patternMatchProduct pm
-		ProductType t1 t2 = pm'
 		-- build casts
 		cast = Cast pm pm' expr'
 	in TypeInformation typ $ Second cast
+
+-- if expression is a tuple
+insertCasts e@(TypeInformation typ (Tuple exprs)) =
+	TypeInformation typ $ Tuple $ map insertCasts exprs
+
+-- if expression is a projection from tuple
+insertCasts e@(TypeInformation typ (ProjectionTuple index expr typ')) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- get labels
+		TupleType types = typ'
+		-- buid types
+		TypeInformation pm _ = expr'
+		TupleType pm' = patternMatchTuple pm (length types)
+		-- build casts
+		cast = Cast pm (TupleType pm') expr'
+	in TypeInformation typ $ ProjectionTuple index cast typ'
 
 -- if expression is a record
 insertCasts e@(TypeInformation typ (Record records)) =
 	let
 		-- insert casts in records
 		recordsCasts = map (\x -> (fst x, insertCasts $ snd x)) records
-		-- get labels
-		(labels, exprs) = fromRecords recordsCasts
-		-- get types
-		types = map fromTypeInformation exprs
 	in TypeInformation typ $ Record recordsCasts
 
--- if expression is a projection
-insertCasts e@(TypeInformation typ (Projection label expr typ')) =
+-- if expression is a projection from record
+insertCasts e@(TypeInformation typ (ProjectionRecord label expr typ')) =
 	let
 		-- insert casts
 		expr' = insertCasts expr
@@ -210,9 +220,7 @@ insertCasts e@(TypeInformation typ (Projection label expr typ')) =
 		RecordType pm' = patternMatchRecords pm labels
 		-- build casts
 		cast = Cast pm (RecordType pm') expr'
-		-- get type
-		t = fromJust $ lookup label pm'
-	in TypeInformation typ $ Projection label cast typ'
+	in TypeInformation typ $ ProjectionRecord label cast typ'
 
 -- if expression is a case
 insertCasts e@(TypeInformation typ (Case expr (var1, expr1) (var2, expr2))) =
@@ -300,6 +308,12 @@ patternMatchProduct :: Type -> Type
 patternMatchProduct e@(ProductType type1 type2) = e
 patternMatchProduct e@(DynType) = ProductType DynType DynType
 
+-- obtain pattern match type for tuples
+patternMatchTuple :: Type -> Int -> Type
+patternMatchTuple e@(TupleType _) i = e
+patternMatchTuple e@(DynType) i =
+	TupleType $ replicate i DynType
+
 -- obtain pattern match type for records
 patternMatchRecords :: Type -> [String] -> Type
 patternMatchRecords e@(RecordType _) labels = e
@@ -334,6 +348,16 @@ joinType (ProductType t11 t12) (ProductType t21 t22) =
 		t1 = joinType t11 t21
 		t2 = joinType t12 t22
 	in ProductType t1 t2
+joinType (TupleType list1) (TupleType list2) =
+	let
+		list = map
+			(\x -> let
+				-- get types
+				t1 = fst x
+				t2 = snd x
+				in (joinType t1 t2))
+			$ zip list1 list2
+	in TupleType list
 joinType (RecordType list1) (RecordType list2) =
 	let
 		list = map

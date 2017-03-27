@@ -429,6 +429,49 @@ evaluate e@(Second expr)
 			(ProductType t21 t22) = t2
 		in evaluationStyle $ Cast t12 t22 $ Second expr'
 
+-- if expression is a tuple
+evaluate e@(Tuple exprs)
+	-- push blames to the top level
+	| any isBlame $ exprs =
+		let	blames = filter isBlame exprs
+		in head blames
+	-- push errors to the top level
+	| any isError $ exprs =
+		let	errors = filter isError exprs
+		in head errors
+	-- reduce expressions
+	| any (not . isValue) exprs =
+		let	exprs' = map evaluate exprs
+		in Tuple exprs'
+	| otherwise = e
+
+-- if expression is a projection from tuple
+evaluate e@(ProjectionTuple index expr typ)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
+	-- reduce expr
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluationStyle $ ProjectionTuple index v typ
+	-- project element of tuple
+	| isTuple expr =
+		let
+			Tuple exprs = expr
+			expr' = exprs !! index
+		in evaluationStyle expr'
+	-- C-Projection - simulate casts on data types
+	| isCast expr =
+		let
+			(Cast t1 t2 expr') = expr
+			-- get types from record
+			TupleType list1 = t1
+			TupleType list2 = t2
+			t' = list1 !! index
+			t'' = list2 !! index
+		in evaluationStyle $ Cast t' t'' $ ProjectionTuple index expr' typ
+
 -- if expression is a record
 evaluate e@(Record records)
 	-- push blames to the top level
@@ -446,8 +489,8 @@ evaluate e@(Record records)
 	| otherwise = e
 	where (labels, exprs) = fromRecords records
 
--- if expression is a projection
-evaluate e@(Projection label expr typ)
+-- if expression is a projection from records
+evaluate e@(ProjectionRecord label expr typ)
 	-- push blames to top level
 	| isBlame expr = expr
 	-- push errors to top level
@@ -455,7 +498,7 @@ evaluate e@(Projection label expr typ)
 	-- reduce expr
 	| not $ isValue expr =
 		let v = evaluate expr
-		in evaluationStyle $ Projection label v typ
+		in evaluationStyle $ ProjectionRecord label v typ
 	-- project element of record
 	| isRecord expr =
 		let
@@ -471,7 +514,7 @@ evaluate e@(Projection label expr typ)
 			RecordType list2 = t2
 			t' = fromJust $ lookup label list1
 			t'' = fromJust $ lookup label list2
-		in evaluationStyle $ Cast t' t'' $ Projection label expr' typ
+		in evaluationStyle $ Cast t' t'' $ ProjectionRecord label expr' typ
 
 
 -- if expression is a case

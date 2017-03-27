@@ -218,10 +218,12 @@ gcd' = LetRec "gcd"
 				(Variable "b"))))
 	(Variable "gcd")
 
-absolute = Abstraction "x" $
-	If (GreaterEqualTo (Variable "x") (Int 0)) (Variable "x") (Multiplication (Variable "x") (Int (-1)))
+test_fix = Fix $ Annotation "s" (ArrowType DynType IntType) $ Annotation "x" DynType  $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "s") (Subtraction (Variable "x") (Int 1))) (Int 0)
 
-test_fix = (Fix $ Abstraction "s" $ Annotation "x" DynType  $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "s") (Subtraction (Variable "x") (Int 1))) (Int 0))
+test_fix2 = Abstraction "f" $ Annotation "x" DynType $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "f") (Subtraction (Variable "x") (Int 1))) (Int 0)
+
+test_fix3 = LetRec "f" (Annotation "x" DynType $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "f") (Subtraction (Variable "x") (Int 1))) (Int 0)) (Variable "f")
+
 -- Examples to test let and letrec
 
 letrec_1 = LetRec "ten"
@@ -299,7 +301,7 @@ sums2_dyn_l = Case (LeftTag (Bool True) (SumType BoolType DynType))
 	("l", Application not' (Variable "l"))
 	("r", Application isZero (Variable "r"))
 
--- Variants
+-- Variants, records and tuples
 
 variants1 = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType), ("i", IntType)]))
 	[("b", "l", Application (Annotation "z" IntType $ Bool True) (Variable "l")),
@@ -358,25 +360,49 @@ variants3 = Application
 variants3_dyn = CaseVariant (Tag "ib" (isZero) (VariantType [("ib", DynType)]))
 	[("ib", "l", Abstraction "x" $ Application (Variable "l") (Variable "x"))]
 
-records1 = Projection "b" (Record [("b", Bool True)]) (RecordType [("b", BoolType)])
+records1 = ProjectionRecord "b" (Record [("b", Bool True)]) (RecordType [("b", BoolType)])
 
-records1_dyn = Projection "b" (Record [("b", Bool True)]) (RecordType [("b", DynType)])
+records1_dyn = ProjectionRecord "b" (Record [("b", Bool True)]) (RecordType [("b", DynType)])
 
 records2 = Application
-	(Abstraction "x" $ Projection "b" (Variable "x") (RecordType [("b", DynType)]))
+	(Abstraction "x" $ ProjectionRecord "b" (Variable "x") (RecordType [("b", DynType)]))
 	(Record [("b", Bool True)])
 
 records2_dyn = Application
-	(Annotation "x" DynType $ Projection "b" (Variable "x") (RecordType [("b", DynType)]))
+	(Annotation "x" DynType $ ProjectionRecord "b" (Variable "x") (RecordType [("b", DynType)]))
 	(Record [("b", Bool True)])
 
-records3 = Projection "1" (Application
-	(Abstraction "x" $ If (Projection "1" (Variable "x") (RecordType [("1", BoolType), ("2", IntType)])) (Variable "x") (Variable "x"))
+records3 = ProjectionRecord "1" (Application
+	(Abstraction "x" $ If (ProjectionRecord "1" (Variable "x") (RecordType [("1", BoolType), ("2", IntType)])) (Variable "x") (Variable "x"))
 	(Record [("1", Bool True), ("2", Int 1)])) (RecordType [("1", BoolType), ("2", IntType)])
 
-records3_dyn = Projection "1" (Application
-	(Annotation "x" DynType $ If (Projection "1" (Variable "x") (RecordType [("1", BoolType), ("2", IntType)])) (Variable "x") (Variable "x"))
+records3_dyn = ProjectionRecord "1" (Application
+	(Annotation "x" DynType $ If (ProjectionRecord "1" (Variable "x") (RecordType [("1", BoolType), ("2", IntType)])) (Variable "x") (Variable "x"))
 	(Record [("1", Bool True), ("2", Int 1)])) (RecordType [("1", BoolType), ("2", IntType)])
+
+tuples1 = ProjectionTuple 0 (Tuple [Bool True]) (TupleType [BoolType])
+
+tuples1_dyn = ProjectionTuple 0 (Tuple [Bool True]) (TupleType [DynType])
+
+tuples2 = Application
+	(Abstraction "x" $ ProjectionTuple 0 (Variable "x") (TupleType [DynType]))
+	(Tuple [Bool True])
+
+tuples2_dyn = Application
+	(Annotation "x" DynType $ ProjectionTuple 0 (Variable "x") (TupleType [DynType]))
+	(Tuple [Bool True])
+
+tuples3 = ProjectionTuple 0 (Application
+	(Abstraction "x" $ If (ProjectionTuple 0 (Variable "x") (TupleType [BoolType, IntType])) (Variable "x") (Variable "x"))
+	(Tuple [Bool True, Int 1])) (TupleType [BoolType, IntType])
+
+tuples3_dyn = ProjectionTuple 0 (Application
+	(Annotation "x" DynType $ If (ProjectionTuple 0 (Variable "x") (TupleType [BoolType, IntType])) (Variable "x") (Variable "x"))
+	(Tuple [Bool True, Int 1])) (TupleType [BoolType, IntType])
+
+tuples4_dyn = ProjectionTuple 2 (Application
+	(Annotation "x" DynType $ If (ProjectionTuple 0 (Variable "x") (TupleType [DynType, DynType])) (Variable "x") (Variable "x"))
+	(Tuple [Bool True, Int 1])) (TupleType [BoolType, IntType])
 
 -- Data
 
@@ -412,35 +438,35 @@ buildTriangle = Abstraction "p1" $ Abstraction "p2" $ Abstraction "p3" $
 triangle1 = buildTriangle_func (buildPos_func 7 5) (buildPos_func 8 3) (buildPos_func 6 3)
 
 calculateCenterSquare = Abstraction "square" $
-	Let "topleft" (Projection "topleft" (Variable "square") squareType) $
-	Let "bottomright" (Projection "bottomright" (Variable "square") squareType) $
-	Let "topleftx" (Projection "x" (Variable "topleft") posType) $
-	Let "toplefty" (Projection "y" (Variable "topleft") posType) $
-	Let "bottomrightx" (Projection "x" (Variable "bottomright") posType) $
-	Let "bottomrighty" (Projection "y" (Variable "bottomright") posType) $
+	Let "topleft" (ProjectionRecord "topleft" (Variable "square") squareType) $
+	Let "bottomright" (ProjectionRecord "bottomright" (Variable "square") squareType) $
+	Let "topleftx" (ProjectionRecord "x" (Variable "topleft") posType) $
+	Let "toplefty" (ProjectionRecord "y" (Variable "topleft") posType) $
+	Let "bottomrightx" (ProjectionRecord "x" (Variable "bottomright") posType) $
+	Let "bottomrighty" (ProjectionRecord "y" (Variable "bottomright") posType) $
 	Application (Application (buildPos)
 		(Division (Addition (Variable "bottomrightx") (Variable "topleftx")) (Int 2)))
 		(Division (Addition (Variable "toplefty") (Variable "bottomrighty")) (Int 2))
 
 calculateCenterCircle = Abstraction "circle" $
-	Projection "center" (Variable "circle") circleType
+	ProjectionRecord "center" (Variable "circle") circleType
 
 calculateCenterTriangle = Abstraction "triangle" $
-	Let "p1" (Projection "p1" (Variable "triangle") triangleType) $
-	Let "p2" (Projection "p2" (Variable "triangle") triangleType) $
-	Let "p3" (Projection "p3" (Variable "triangle") triangleType) $
+	Let "p1" (ProjectionRecord "p1" (Variable "triangle") triangleType) $
+	Let "p2" (ProjectionRecord "p2" (Variable "triangle") triangleType) $
+	Let "p3" (ProjectionRecord "p3" (Variable "triangle") triangleType) $
 	Let "x" (Division
 		(Addition
-			(Projection "x" (Variable "p1") posType)
+			(ProjectionRecord "x" (Variable "p1") posType)
 			(Addition
-				(Projection "x" (Variable "p2") posType)
-				(Projection "x" (Variable "p3") posType))) (Int 3)) $
+				(ProjectionRecord "x" (Variable "p2") posType)
+				(ProjectionRecord "x" (Variable "p3") posType))) (Int 3)) $
 	Let "y" (Division
 		(Addition
-			(Projection "y" (Variable "p1") posType)
+			(ProjectionRecord "y" (Variable "p1") posType)
 			(Addition
-				(Projection "y" (Variable "p2") posType)
-				(Projection "y" (Variable "p3") posType))) (Int 3)) $
+				(ProjectionRecord "y" (Variable "p2") posType)
+				(ProjectionRecord "y" (Variable "p3") posType))) (Int 3)) $
 	Application (Application buildPos (Variable "x")) (Variable "y")
 
 calculateCenter = Abstraction "shape" $
@@ -544,19 +570,19 @@ tree12 = Application (Application insertTree (Int 2)) (tree1)
 
 tree123 = Application (Application insertTree (Int 3)) (tree12)
 
-getNumberNode = Abstraction "node" $ Projection "Value" (Variable "node") nodeType
+getNumberNode = Abstraction "node" $ ProjectionRecord "Value" (Variable "node") nodeType
 
-getLeftSide = Abstraction "node" $ Projection "Left" (Variable "node") nodeType
+getLeftSide = Abstraction "node" $ ProjectionRecord "Left" (Variable "node") nodeType
 
-getRightSide = Abstraction "node" $ Projection "Right" (Variable "node") nodeType
+getRightSide = Abstraction "node" $ ProjectionRecord "Right" (Variable "node") nodeType
 
 sizeTree = Fix $ Abstraction "s" $ Abstraction "t" $
 	CaseVariant (Unfold treeType $ Variable "t")
 		[("Leaf", "", Int 0),
 		("Node", "x", Addition (Int 1)
 			(Addition
-				(Application (Variable "s") (Projection "Left" (Variable "x") nodeType ))
-				(Application (Variable "s") (Projection "Right" (Variable "x") nodeType ))))]
+				(Application (Variable "s") (ProjectionRecord "Left" (Variable "x") nodeType ))
+				(Application (Variable "s") (ProjectionRecord "Right" (Variable "x") nodeType ))))]
 
 insertTree = Fix $ Abstraction "insertTree" $ Abstraction "i" $ Abstraction "t" $
 	CaseVariant (Unfold treeType $ Variable "t")

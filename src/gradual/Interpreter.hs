@@ -16,6 +16,9 @@ import CastInsertion
 -- Evaluation
 import Evaluation
 
+-- Pretty Printing
+import PrettyPrinter
+
 -- Imports
 import Data.Either
 

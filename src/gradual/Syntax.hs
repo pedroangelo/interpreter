@@ -43,9 +43,12 @@ data Expression
 	| Pair Expression Expression
 	| First Expression
 	| Second Expression
+	-- Tuples
+	| Tuple [Expression]
+	| ProjectionTuple Int Expression Type
 	-- Records
 	| Record Records
-	| Projection Label Expression Type
+	| ProjectionRecord Label Expression Type
 	-- Sums
 	| Case Expression (Var, Expression) (Var, Expression)
 	| LeftTag Expression Type
@@ -61,7 +64,7 @@ data Expression
 	-- Casts
 	| Cast Type Type Expression
 	-- Blame
-	| Blame Type String
+	| Blame Type Message
 	-- Errors
 	| Error Message
 	deriving (Show, Eq)
@@ -101,16 +104,14 @@ mapExpression f e@(Unit) = f e
 mapExpression f e@(Pair expr1 expr2) = f (Pair (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(First expr) = f (First (mapExpression f expr))
 mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
-mapExpression f e@(Record records) =
-	f (Record
-	(map (\x -> (fst x, mapExpression f (snd x))) records))
-mapExpression f e@(Projection label expr typ) = f (Projection label (mapExpression f expr) typ)
+mapExpression f e@(Tuple exprs) = f (Tuple (map (mapExpression f) exprs))
+mapExpression f e@(ProjectionTuple index expr typ) = f (ProjectionTuple index (mapExpression f expr) typ)
+mapExpression f e@(Record records) = f (Record (map (\x -> (fst x, mapExpression f (snd x))) records))
+mapExpression f e@(ProjectionRecord label expr typ) = f (ProjectionRecord label (mapExpression f expr) typ)
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
-mapExpression f e@(CaseVariant expr alternatives) =
-	f (CaseVariant (mapExpression f expr)
-	(map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
+mapExpression f e@(CaseVariant expr alternatives) = f (CaseVariant (mapExpression f expr) (map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
 mapExpression f e@(Tag label expr typ) = f (Tag label (mapExpression f expr) typ)
 mapExpression f e@(Fold typ expr) = f (Fold typ (mapExpression f expr))
 mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
@@ -136,182 +137,192 @@ isApplication :: Expression -> Bool
 isApplication (Application _ _) = True
 isApplication _ = False
 
--- check if is an ascription
+-- check if it's an ascription
 isAscription :: Expression -> Bool
 isAscription (Ascription _ _) = True
 isAscription _ = False
 
--- check if is an annotated abstraction
+-- check if it's an annotated abstraction
 isAnnotation :: Expression -> Bool
 isAnnotation (Annotation _ _ _) = True
 isAnnotation _ = False
 
--- check if is a boolean
+-- check if it's a boolean
 isBool :: Expression -> Bool
 isBool (Bool _) = True
 isBool _ = False
 
--- check if is an integer
+-- check if it's an integer
 isInt :: Expression -> Bool
 isInt (Int _) = True
 isInt _ = False
 
--- check if is a let binding
+-- check if it's a let binding
 isLet :: Expression -> Bool
 isLet (Let _ _ _) = True
 isLet _ = False
 
--- check if is a fixed point
+-- check if it's a fixed point
 isFix :: Expression -> Bool
 isFix (Fix _) = True
 isFix _ = False
 
--- check if is a recursive let binding
+-- check if it's a recursive let binding
 isLetRec :: Expression -> Bool
 isLetRec (LetRec _ _ _) = True
 isLetRec _ = False
 
--- check if is a conditional statement
+-- check if it's a conditional statement
 isIf :: Expression -> Bool
 isIf (If _ _ _) = True
 isIf _ = False
 
--- check if is an addition
+-- check if it's an addition
 isAddition :: Expression -> Bool
 isAddition (Addition _ _) = True
 isAddition _ = False
 
--- check if is a subtraction
+-- check if it's a subtraction
 isSubtraction :: Expression -> Bool
 isSubtraction (Subtraction _ _) = True
 isSubtraction _ = False
 
--- check if is a multiplication
+-- check if it's a multiplication
 isMultiplication :: Expression -> Bool
 isMultiplication (Multiplication _ _) = True
 isMultiplication _ = False
 
--- check if is a division
+-- check if it's a division
 isDivision :: Expression -> Bool
 isDivision (Division _ _) = True
 isDivision _ = False
 
--- check if is an equality check
+-- check if it's an equality check
 isEqual :: Expression -> Bool
 isEqual (Equal _ _) = True
 isEqual _ = False
 
--- check if is a non equality check
+-- check if it's a non equality check
 isNotEqual :: Expression -> Bool
 isNotEqual (NotEqual _ _) = True
 isNotEqual _ = False
 
--- check if is a lesser than check
+-- check if it's a lesser than check
 isLessThan :: Expression -> Bool
 isLessThan (LesserThan _ _) = True
 isLessThan _ = False
 
--- check if is a greater than check
+-- check if it's a greater than check
 isGreaterThan :: Expression -> Bool
 isGreaterThan (GreaterThan _ _) = True
 isGreaterThan _ = False
 
--- check if is a lesser than or equal to check
+-- check if it's a lesser than or equal to check
 isLessEqualTo :: Expression -> Bool
 isLessEqualTo (LesserEqualTo _ _) = True
 isLessEqualTo _ = False
 
--- check if is a greater than or equal to check
+-- check if it's a greater than or equal to check
 isGreaterEqualTo :: Expression -> Bool
 isGreaterEqualTo (GreaterEqualTo _ _) = True
 isGreaterEqualTo _ = False
 
--- check if it an unit
+-- check if it's an unit
 isUnit :: Expression -> Bool
 isUnit Unit = True
 isUnit _ = False
 
--- check if is a pair
+-- check if it's a pair
 isPair :: Expression -> Bool
 isPair (Pair _ _) = True
 isPair _ = False
 
--- check if is a first projection
+-- check if it's a first projection
 isFirst :: Expression -> Bool
 isFirst (First _) = True
 isFirst _ = False
 
--- check if is a second projection
+-- check if it's a second projection
 isSecond :: Expression -> Bool
 isSecond (Second _) = True
 isSecond _ = False
 
--- check if is a record
+-- check if it's a tuple
+isTuple :: Expression -> Bool
+isTuple (Tuple _) = True
+isTuple _ = False
+
+-- check if it's a projection from tuples
+isProjectionTuple :: Expression -> Bool
+isProjectionTuple (ProjectionTuple _ _ _) = True
+isProjectionTuple _ = False
+
+-- check if it's a record
 isRecord :: Expression -> Bool
 isRecord (Record _) = True
 isRecord _ = False
 
--- check if is a projection
-isProjection :: Expression -> Bool
-isProjection (Projection _ _ _) = True
-isProjection _ = False
+-- check if it's a projection from records
+isProjectionRecord :: Expression -> Bool
+isProjectionRecord (ProjectionRecord _ _ _) = True
+isProjectionRecord _ = False
 
--- check if is a case
+-- check if it's a case
 isCase :: Expression -> Bool
 isCase (Case _ _ _) = True
 isCase _ = False
 
--- check if is a left tag
+-- check if it's a left tag
 isLeftTag :: Expression -> Bool
 isLeftTag (LeftTag _ _) = True
 isLeftTag _ = False
 
--- check if is a second projection
+-- check if it's a right tag
 isRightTag :: Expression -> Bool
 isRightTag (RightTag _ _) = True
 isRightTag _ = False
 
--- check if is a variant case
+-- check if it's a variant case
 isCaseVariant :: Expression -> Bool
 isCaseVariant (CaseVariant _ _) = True
 isCaseVariant _ = False
 
--- check if is a tag
+-- check if it's a tag
 isTag :: Expression -> Bool
 isTag (Tag _ _ _) = True
 isTag _ = False
 
--- check if is a fold
+-- check if it's a fold
 isFold :: Expression -> Bool
 isFold (Fold _ _) = True
 isFold _ = False
 
--- check if is an unfold
+-- check if it's an unfold
 isUnfold :: Expression -> Bool
 isUnfold (Unfold _ _) = True
 isUnfold _ = False
 
--- check if is a type information
+-- check if it's a type information
 isTypeInformation :: Expression -> Bool
 isTypeInformation (TypeInformation _ _) = True
 isTypeInformation _ = False
 
--- check if is a cast
+-- check if it's a cast
 isCast :: Expression -> Bool
 isCast (Cast _ _ _) = True
 isCast _ = False
 
--- check if is a blame
+-- check if it's a blame
 isBlame :: Expression -> Bool
 isBlame (Blame _ _) = True
 isBlame _ = False
 
--- check if is an error
+-- check if it's an error
 isError :: Expression -> Bool
 isError (Error _) = True
 isError _ = False
 
--- check if is a value
+-- check if it's a value
 isValue :: Expression -> Bool
 isValue e =
 	isVariable e ||
@@ -320,6 +331,7 @@ isValue e =
 	isInt e ||
 	isUnit e ||
 	(isPair e && isValuePair e) ||
+	(isTuple e && isValueTuple e) ||
 	(isRecord e && isValueRecord e) ||
 	((isLeftTag e || isRightTag e) && isValueSums e) ||
 	(isTag e && isValueVariants e) ||
@@ -333,12 +345,17 @@ isValuePair :: Expression -> Bool
 isValuePair (Pair expr1 expr2) = isValue expr1 && isValue expr2
 isValuePair _ = False
 
+-- check if tuple is a value
+isValueTuple :: Expression -> Bool
+isValueTuple (Tuple exprs) = all isValue exprs
+isValueTuple _ = False
+
 -- check if record is a value
 isValueRecord :: Expression -> Bool
 isValueRecord (Record records) = all (\x -> isValue $ snd x) records
 isValueRecord _ = False
 
--- check if sums is a value
+-- check if sum is a value
 isValueSums :: Expression -> Bool
 isValueSums (LeftTag expr _) = isValue expr
 isValueSums (RightTag expr _) = isValue expr
@@ -355,6 +372,7 @@ isValueCast (Cast t1 t2 e) =
 	(isGroundType t1 && isDynType t2 && isValue e) ||
 	(isArrowType t1 && isArrowType t2 && isValue e && t1 /= t2) ||
 	(isProductType t1 && isProductType t2 && isValue e && t1 /= t2) ||
+	(isTupleType t1 && isTupleType t2 && isValue e && t1 /= t2) ||
 	(isRecordType t1 && isRecordType t2 && isValue e && t1 /= t2) ||
 	(isSumType t1 && isSumType t2 && isValue e && t1 /= t2) ||
 	(isVariantType t1 && isVariantType t2 && isValue e && t1 /= t2) ||
@@ -362,7 +380,7 @@ isValueCast (Cast t1 t2 e) =
 	(isMuType t1 && isMuType t2 && isValue e && t1 /= t2)
 isValueCast _ = False
 
--- check if is an arithmetic operator
+-- check if it's an arithmetic operator
 isArithmeticOperator :: Expression -> Bool
 isArithmeticOperator (Addition _ _) = True
 isArithmeticOperator (Subtraction _ _) = True
@@ -370,7 +388,7 @@ isArithmeticOperator (Multiplication _ _) = True
 isArithmeticOperator (Division _ _) = True
 isArithmeticOperator _ = False
 
--- check if is a relational operator
+-- check if it's a relational operator
 isRelationalOperator :: Expression -> Bool
 isRelationalOperator (Equal _ _) = True
 isRelationalOperator (NotEqual _ _) = True
@@ -416,7 +434,7 @@ substitute :: ExpressionSubstitution -> Expression -> Expression
 substitute s@(old, new) e@(Variable var)
 	-- if var equals old, replace variable with new expression
 	| var == old = new
-	-- otherwise, replace nothing
+	-- otherwise, do nothing
 	| otherwise = e
 
 -- if the expression is an abstraction
@@ -428,12 +446,10 @@ substitute s@(old, new) e@(Abstraction var expr)
 
 -- if the expression is an application
 substitute s@(old, new) e@(Application expr1 expr2) =
-	-- propagate substitutions
 	Application (substitute s expr1) (substitute s expr2)
 
 -- if the expression is an ascription
 substitute s@(old, new) e@(Ascription expr typ) =
-	-- propagate substitutions
 	Ascription (substitute s expr) typ
 
 -- if the expression is an annotated Abstraction
@@ -454,7 +470,7 @@ substitute s@(old, new) e@(Let var expr1 expr2)
 	-- otherwise, propagate substitutions
 	| otherwise = Let var (substitute s expr1) (substitute s expr2)
 
--- if the expression is a fixed point, propagate substitutions
+-- if the expression is a fixed point
 substitute s@(old, new) e@(Fix expr) = Fix $ substitute s expr
 
 -- if the expression is a recursive let binding
@@ -466,11 +482,9 @@ substitute s@(old, new) e@(LetRec var expr1 expr2)
 
 -- if the expression is a conditional statement
 substitute s@(old, new) e@(If expr1 expr2 expr3) =
-	-- propagate substitutions
 	If (substitute s expr1) (substitute s expr2) (substitute s expr3)
 
--- if expression is an arithmetic operation or comparison operator,
--- propagate substitutions
+-- if expression is an arithmetic operation or comparison operator
 substitute s@(old, new) e@(Addition expr1 expr2) =
 	Addition (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Subtraction expr1 expr2) =
@@ -503,11 +517,17 @@ substitute s@(old, new) e@(First expr) =
 substitute s@(old, new) e@(Second expr) =
 	Second (substitute s expr)
 
--- if the expression is a record or a projection
+-- if the expression is a tuple or a projection from tuples
+substitute s@(old, new) e@(Tuple exprs) =
+	Tuple (map (substitute s) exprs)
+substitute s@(old, new) e@(ProjectionTuple index expr typ) =
+	ProjectionTuple index (substitute s expr) typ
+
+-- if the expression is a record or a projection from records
 substitute s@(old, new) e@(Record records) =
 	Record (map (substituteRecord s) records)
-substitute s@(old, new) e@(Projection label expr typ) =
-	Projection label (substitute s expr) typ
+substitute s@(old, new) e@(ProjectionRecord label expr typ) =
+	ProjectionRecord label (substitute s expr) typ
 
 -- if the expression is a case or tag
 substitute s@(old, new) e@(Case expr e1@(var1, expr1) e2@(var2, expr2)) =
@@ -529,18 +549,18 @@ substitute s@(old, new) e@(Fold typ expr) =
 substitute s@(old, new) e@(Unfold typ expr) =
 	Unfold typ (substitute s expr)
 
--- if expression is a type information, propagate substitutions
+-- if expression is a type information
 substitute s@(old, new) e@(TypeInformation typ expr) =
 	TypeInformation typ $ substitute s expr
 
--- if expression is a cast, propagate substitutions
+-- if expression is a cast
 substitute s@(old, new) e@(Cast t1 t2 expr) =
 	Cast t1 t2 $ substitute s expr
 
--- if expression is a blame, don't propagate substitutions
+-- if expression is a blame, do nothing
 substitute s@(old, new) e@(Blame t1 label) = e
 
--- if expression is a error, don't propagate substitutions
+-- if expression is a error, do nothing
 substitute s@(old, new) e@(Error msg) = e
 
 -- substitution for case expressions
@@ -549,7 +569,7 @@ substituteCase s@(old, new) e@(var, expr)
 	| old == var = e
 	| otherwise = (var, substitute s expr)
 
--- substitution for case expressions
+-- substitution for variant case expressions
 substituteCaseVariant :: ExpressionSubstitution -> Alternative -> Alternative
 substituteCaseVariant s@(old, new) e@(label, var, expr)
 	| old == var = e
