@@ -10,15 +10,15 @@ type Bindings = (Var, Type)
 
 -- Types in λ-calculus and extensions
 data Type
-	-- Type variable
+	-- Type variable: Var
 	= VarType Var
 	-- Arrow type: Type -> Type
 	| ArrowType Type Type
-	-- Integer type
+	-- Integer type: Int
 	| IntType
-	-- Boolean type
+	-- Boolean type: Bool
 	| BoolType
-	-- Dynamic type
+	-- Dynamic type: ?
 	| DynType
 	-- For all quantifier: ∀Var.Type
 	| ForAll Var Type

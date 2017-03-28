@@ -625,11 +625,11 @@ codomain t
 		put (i+2)
 		let t1 = newTypeVar i
 		let t2 = newTypeVar (i+1)
-		-- return as type t2 and equality relation t = t1 -> t2
+		-- return as type t2 and equality constraint t =C t1 -> t2
 		return (t2, [Equality t (ArrowType t1 t2)])
 	-- if t is arrow type
 	| isArrowType t = do
-		-- let t1 and t2 such that t = t1 -> t2
+		-- let t1 and t2 such that t =C t1 -> t2
 		let (ArrowType t1 t2) = t
 		-- return as type t2
 		return (t2, [])
@@ -654,7 +654,7 @@ domain t1 t2
 		return [Consistency t11 t2, Equality t1 (ArrowType t11 t12)]
 	-- if t1 is arrow type
 	| isArrowType t1 = do
-		-- let t11 and t12 such that t1 = t11 -> t12
+		-- let t11 and t12 such that t1 =C t11 -> t12
 		let (ArrowType t11 t12) = t1
 		-- return constraints t11 ~C t2
 		return [Consistency t11 t2]
@@ -665,6 +665,7 @@ domain t1 t2
 	-- throw error
 	| otherwise = throwError $ "Error: Type " ++ (show t1) ++ " has no domain!!"
 
+-- generate components of arrow type
 patternMatchArrow :: Type -> StateT Int (Except String) (Type, Constraints)
 patternMatchArrow t
 	-- if t is type variable
@@ -678,7 +679,7 @@ patternMatchArrow t
 		return (ArrowType t1 t2, [Equality t (ArrowType t1 t2)])
 	-- if t1 is arrow type
 	| isArrowType t = do
-		-- let t1 and t2 such that t = t1 -> t2
+		-- let t1 and t2 such that t =C t1 -> t2
 		let (ArrowType t1 t2) = t
 		-- return constraints t11 ~C t2
 		return (t, [])
@@ -773,7 +774,7 @@ patternMatchProduct t
 		put (i+2)
 		let t1 = newTypeVar i
 		let t2 = newTypeVar (i+1)
-		-- return types and equality relation t = t1 + t2
+		-- return types and equality relation t =C t1 × t2
 		return (ProductType t1 t2, [Equality t (ProductType t1 t2)])
 	-- if t is sum type
 	| isProductType t = do
@@ -795,10 +796,10 @@ patternMatchTuple n t
 	| isVarType t = do
 		-- counter for variable creation
 		i <- get
-		put (i+n+1)
+		put (i+n)
 		-- create new type variables
 		let typeVars = map newTypeVar [i..i+n-1]
-		-- return types and equality relation t = <li:Ti>
+		-- return types and equality relation t =C {Ti}
 		return (TupleType typeVars, [Equality t (TupleType typeVars)])
 	-- if t is tuple type
 	| isTupleType t = do
@@ -820,12 +821,12 @@ patternMatchRecord labels t
 	| isVarType t = do
 		-- counter for variable creation
 		i <- get
-		put (i+n+1)
+		put (i+n)
 		-- create new type variables
 		let typeVars = map newTypeVar [i..i+n-1]
 		-- build type consisting of new type variables
 		let list = zip labels typeVars
-		-- return types and equality relation t = {li:Ti}
+		-- return types and equality relation t =C {li:Ti}
 		return (RecordType list, [Equality t (RecordType list)])
 	-- if t is record type
 	| isRecordType t = do
@@ -851,7 +852,7 @@ patternMatchSum t
 		put (i+2)
 		let t1 = newTypeVar i
 		let t2 = newTypeVar (i+1)
-		-- return types and equality relation t = t1 + t2
+		-- return types and equality relation t =C t1 + t2
 		return (SumType t1 t2, [Equality t (SumType t1 t2)])
 	-- if t is sum type
 	| isSumType t = do
@@ -873,12 +874,12 @@ patternMatchVariant labels t
 	| isVarType t = do
 		-- counter for variable creation
 		i <- get
-		put (i+n+1)
+		put (i+n)
 		-- create new type variables
 		let typeVars = map newTypeVar [i..i+n-1]
 		-- build type consisting of new type variables
 		let list = zip labels typeVars
-		-- return types and equality relation t = <li:Ti>
+		-- return types and equality relation t =C <li:Ti>
 		return (VariantType list, [Equality t (VariantType list)])
 	-- if t is variant type
 	| isVariantType t = do
@@ -907,7 +908,7 @@ patternMatchMu var t
 		let typeVar = newTypeVar i
 		-- build type consisting of new type variables
 		let typ = Mu var typeVar
-		-- return types and equality relation t = <li:Ti>
+		-- return types and equality relation t =C μVar.T
 		return (typ, [Equality t typ])
 	-- if t is variant type
 	| isMuType t = do

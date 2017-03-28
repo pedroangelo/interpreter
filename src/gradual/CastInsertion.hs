@@ -43,7 +43,7 @@ insertCasts e@(TypeInformation typ (Ascription expr typ')) =
 insertCasts e@(TypeInformation typ (Annotation var annotation expr)) =
 	TypeInformation typ $ Annotation var annotation $ insertCasts expr
 
--- if expression is a integer
+-- if expression is an integer
 insertCasts e@(TypeInformation _ (Int _)) = e
 
 -- if expression is a boolean
@@ -147,8 +147,7 @@ insertCasts e@(TypeInformation typ expr)
 	where (expr1, expr2) = fromOperator expr
 
 -- if expression is an unit
-insertCasts e@(TypeInformation typ Unit) =
-	TypeInformation typ Unit
+insertCasts e@(TypeInformation _ Unit) = e
 
 -- if expression is a pair
 insertCasts e@(TypeInformation typ (Pair expr1 expr2)) =
@@ -163,10 +162,9 @@ insertCasts e@(TypeInformation typ (First expr)) =
 	let
 		-- insert casts
 		expr' = insertCasts expr
-		-- buid types
+		-- build types
 		TypeInformation pm _ = expr'
 		pm' = patternMatchProduct pm
-		ProductType t1 t2 = pm'
 		-- build casts
 		cast = Cast pm pm' expr'
 	in TypeInformation typ $ First cast
@@ -196,9 +194,9 @@ insertCasts e@(TypeInformation typ (ProjectionTuple index expr typ')) =
 		TupleType types = typ'
 		-- buid types
 		TypeInformation pm _ = expr'
-		TupleType pm' = patternMatchTuple pm (length types)
+		pm' = patternMatchTuple pm (length types)
 		-- build casts
-		cast = Cast pm (TupleType pm') expr'
+		cast = Cast pm pm' expr'
 	in TypeInformation typ $ ProjectionTuple index cast typ'
 
 -- if expression is a record
@@ -217,9 +215,9 @@ insertCasts e@(TypeInformation typ (ProjectionRecord label expr typ')) =
 		(labels, _) = fromRecordType typ'
 		-- buid types
 		TypeInformation pm _ = expr'
-		RecordType pm' = patternMatchRecords pm labels
+		pm' = patternMatchRecords pm labels
 		-- build casts
-		cast = Cast pm (RecordType pm') expr'
+		cast = Cast pm pm' expr'
 	in TypeInformation typ $ ProjectionRecord label cast typ'
 
 -- if expression is a case
@@ -263,11 +261,11 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
 		-- get labels
 		labels = fst3 $ fromAlternatives alternatives
 		-- obtain pattern math of variant type
-		VariantType pm' = patternMatchVariant pm labels
+		pm' = patternMatchVariant pm labels
 		-- get join type of all types from alternatives
 		j = foldl joinType (head types) (tail types)
 		-- build casts
-		cast = Cast pm (VariantType pm') expr'
+		cast = Cast pm pm' expr'
 		casts = map
 			(\x -> (fst3 $ snd x, snd3 $ snd x, Cast (fst x) j (trd3 $ snd x)))
 			$ zip types alternativesCasts
@@ -311,14 +309,12 @@ patternMatchProduct e@(DynType) = ProductType DynType DynType
 -- obtain pattern match type for tuples
 patternMatchTuple :: Type -> Int -> Type
 patternMatchTuple e@(TupleType _) i = e
-patternMatchTuple e@(DynType) i =
-	TupleType $ replicate i DynType
+patternMatchTuple e@(DynType) i = TupleType $ replicate i DynType
 
 -- obtain pattern match type for records
 patternMatchRecords :: Type -> [String] -> Type
 patternMatchRecords e@(RecordType _) labels = e
-patternMatchRecords e@(DynType) labels =
-	RecordType $ map (\x -> (x, DynType)) labels
+patternMatchRecords e@(DynType) labels = RecordType $ map (\x -> (x, DynType)) labels
 
 -- obtain pattern match type for sum
 patternMatchSum :: Type -> Type
@@ -328,8 +324,7 @@ patternMatchSum e@(DynType) = SumType DynType DynType
 -- obtain pattern match type for variant
 patternMatchVariant :: Type -> [String] -> Type
 patternMatchVariant e@(VariantType _) labels = e
-patternMatchVariant e@(DynType) labels =
-	VariantType $ map (\x -> (x, DynType)) labels
+patternMatchVariant e@(DynType) labels = VariantType $ map (\x -> (x, DynType)) labels
 
 -- obtain pattern math type for recursive type
 patternMatchMu :: Type -> Var -> Type
@@ -392,6 +387,6 @@ joinType (Mu var1 t1) (Mu var2 t2) =
 		t = joinType t1 t2
 	in Mu var1 t
 joinType t1 t2
-	| (not (isArrowType t1) || not (isProductType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isMuType t1)) &&
-	 	(not (isArrowType t2) || not (isProductType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isMuType t2)) =
+	| (not (isArrowType t1) || not (isProductType t1) || not (isTupleType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isMuType t1)) &&
+	 	(not (isArrowType t2) || not (isProductType t2) || not (isTupleType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isMuType t2)) =
 		if (isDynType t1) then t2 else t1

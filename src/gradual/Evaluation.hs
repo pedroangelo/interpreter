@@ -417,7 +417,7 @@ evaluate e@(Second expr)
 	| not $ isValue expr =
 		let v = evaluate expr
 		in evaluationStyle $ Second v
-	-- project first element of pair
+	-- project second element of pair
 	| isPair expr =
 		let (Pair expr1 expr2) = expr
 		in evaluationStyle $ expr2
@@ -461,7 +461,7 @@ evaluate e@(ProjectionTuple index expr typ)
 			Tuple exprs = expr
 			expr' = exprs !! index
 		in evaluationStyle expr'
-	-- C-Projection - simulate casts on data types
+	-- C-ProjectionTuple - simulate casts on data types
 	| isCast expr =
 		let
 			(Cast t1 t2 expr') = expr
@@ -505,7 +505,7 @@ evaluate e@(ProjectionRecord label expr typ)
 			Record list = expr
 			Just expr' = lookup label list
 		in evaluationStyle expr'
-	-- C-Projection - simulate casts on data types
+	-- C-ProjectionRecord - simulate casts on data types
 	| isCast expr =
 		let
 			(Cast t1 t2 expr') = expr
@@ -515,7 +515,6 @@ evaluate e@(ProjectionRecord label expr typ)
 			t' = fromJust $ lookup label list1
 			t'' = fromJust $ lookup label list2
 		in evaluationStyle $ Cast t' t'' $ ProjectionRecord label expr' typ
-
 
 -- if expression is a case
 evaluate e@(Case expr (var1, expr1) (var2, expr2))
@@ -704,8 +703,8 @@ evaluate e@(Cast t1 t2 expr)
 	-- Project types and expression from inner casts
 	where (Cast t1' t2' expr') = expr
 
--- if expression is a blame label
+-- blames are values
 evaluate e@(Blame _ _) = e
 
--- if expression is an error
+-- errors are values
 evaluate e@(Error _) = e
