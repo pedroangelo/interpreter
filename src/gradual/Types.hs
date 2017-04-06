@@ -26,7 +26,7 @@ data Type
 	| UnitType
 	-- Product type: Type × Type
 	| ProductType Type Type
-	-- Tuple type: {Types}
+	-- Tuple type: (Types)
 	| TupleType [Type]
 	-- Record type: {Labels:Types}
 	| RecordType [(Label, Type)]
