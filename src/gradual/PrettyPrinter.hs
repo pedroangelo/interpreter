@@ -72,15 +72,15 @@ prettyExpression (ProjectionRecord label expr typ) = hcat
 	[printParensExpression expr, text ".", text label]
 prettyExpression (Case expr (var1, expr1) (var2, expr2)) = nest 2 $ vsep
 	[text "case" <+> printParensExpression expr <+> text "of",
-	text "| inl" <+> text var1 <+> text "=>" <+> prettyExpression expr1,
-	text "| inr" <+> text var2 <+> text "=>" <+> prettyExpression expr2]
+	nest 2 $ text "| inl" <+> text var1 <+> text "=>" <+> prettyExpression expr1,
+	nest 2 $ text "| inr" <+> text var2 <+> text "=>" <+> prettyExpression expr2]
 prettyExpression (LeftTag expr typ) = hsep
 	[text "inl", printParensExpression expr]
 prettyExpression (RightTag expr typ) = hsep
 	[text "inr", printParensExpression expr]
 prettyExpression (CaseVariant expr alternatives) = nest 2 $ vsep
 	[text "case" <+> printParensExpression expr <+> text "of",
-	vcat (map (\x -> hcat
+	vcat (map (\x -> nest 2 $ hcat
 		[text "| <", text (fst3 x),	text "=", text (snd3 x), text "> => ",
 		prettyExpression (trd3 x)]) alternatives)]
 prettyExpression (Tag label expr typ) = variant $ hcat
@@ -102,14 +102,15 @@ prettyType :: Type -> Doc
 prettyType (VarType var) = text var
 prettyType (ArrowType t1 t2) = hsep
 	[printParensType t1, text "->", prettyType t2]
-prettyType (IntType) = text "Int"
-prettyType (BoolType) = text "Bool"
+prettyType (IntType) = text "int"
+prettyType (BoolType) = text "bool"
 prettyType (DynType) = text "?"
 prettyType (ForAll var typ) = hcat
-	[text "∀", text var, text ".", prettyType typ]
+	[text "forall", text var, text ".", prettyType typ]
 prettyType (UnitType) = text "()"
 prettyType (ProductType t1 t2) = hsep
 	[printParensType t1, text "×", printParensType t2]
+prettyType (TupleType ts) = parens $ hcat $ punctuate comma $ map prettyType ts
 prettyType (RecordType ts) = braces $ hcat $ punctuate (comma <> space) $
 		map (\x -> text (fst x) <> text ":" <> prettyType (snd x)) ts
 prettyType (SumType t1 t2) = hsep
@@ -117,7 +118,7 @@ prettyType (SumType t1 t2) = hsep
 prettyType (VariantType ts) = variant $ hcat $ punctuate (comma <> space) $
 		map (\x -> text (fst x) <> text ":" <> prettyType (snd x)) ts
 prettyType (Mu var typ) = hcat
-	[text "μ", text var, text ".", prettyType typ]
+	[text "mu", text var, text ".", prettyType typ]
 
 variant :: Doc -> Doc
 variant p = enclose langle rangle p
