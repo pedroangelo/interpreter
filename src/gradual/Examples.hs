@@ -610,45 +610,45 @@ insertTree = Fix $ Abstraction "insertTree" $ Abstraction "i" $ Abstraction "t" 
 							Application (Application (Variable "insertTree") (Variable "i")) (Variable "r"))]) treeType')])]
 
 -- Lists
-listType = DynType
+typeOfList = DynType
 
-list_1 = Cons listType (Int 1) $ Nil listType
+list_1 = Cons typeOfList (Int 1) $ Nil typeOfList
 
-list_2 = Cons listType (Int 2) list_1
+list_2 = Cons typeOfList (Int 2) list_1
 
-list_true = Cons listType (Bool True) $ Nil listType
+list_true = Cons typeOfList (Bool True) $ Nil typeOfList
 
-list_1true = Cons listType (Int 1) list_true
+list_1true = Cons typeOfList (Int 1) list_true
 
-sumList = Fix $ Annotation "f" (ArrowType (ListType listType) IntType) $ Annotation "l" (ListType listType) $
-	If (IsNil listType (Variable "l"))
+sumList = Fix $ Annotation "f" (ArrowType (ListType typeOfList) IntType) $ Annotation "l" (ListType typeOfList) $
+	If (IsNil typeOfList (Variable "l"))
 		(Int 0)
 		(Addition
-			(Head listType $ Variable "l")
+			(Head typeOfList $ Variable "l")
 			(Application
 				(Variable "f")
-				(Tail listType $ Variable "l")))
+				(Tail typeOfList $ Variable "l")))
 
-lengthList = Fix $ Annotation "f" (ArrowType (ListType listType) IntType) $ Annotation "l" (ListType listType) $
-	If (IsNil listType $ Variable "l")
+lengthList = Fix $ Annotation "f" (ArrowType (ListType typeOfList) IntType) $ Annotation "l" (ListType typeOfList) $
+	If (IsNil typeOfList $ Variable "l")
 		(Int 0)
 		(Addition
 			(Int 1)
 			(Application
 				(Variable "f")
-				(Tail listType $ Variable "l")))
+				(Tail typeOfList $ Variable "l")))
 
 mapList = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $
-	If (IsNil listType (Variable "l"))
-		(Nil listType)
-		(Cons listType
+	If (IsNil typeOfList (Variable "l"))
+		(Nil typeOfList)
+		(Cons typeOfList
 			(Application
 				(Variable "f")
-				(Head listType $ Variable "l"))
+				(Head typeOfList $ Variable "l"))
 			(Application
 				(Application
 					(Variable "m")
 					(Variable "f"))
-				(Tail listType $ Variable "l")))
+				(Tail typeOfList $ Variable "l")))
 
 mapList_func f l = Application (Application mapList f) l

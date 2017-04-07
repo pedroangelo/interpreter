@@ -24,9 +24,10 @@ languageDefinition = emptyDef {
 	Token.identLetter     = alphaNum <|> oneOf "_'",
 	Token.opStart         = oneOf ":!#$%&*+./<=>?@\\^|-~",
 	Token.opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~",
-	Token.reservedNames   = ["let", "in", "fix", "letrec", "if", "then", "else",
-	 						"unit",	"as", "case", "of", "fold", "unfold",
-							"true", "false", "bool", "int", "?", "forall", "mu"],
+	Token.reservedNames   = ["true", "false", "let", "in", "fix", "letrec",
+							"if", "then", "else", "unit", "as", "case", "of",
+							"nil", "cons", "isnil", "head", "tail", "fold",
+							"unfold", "int", "bool", "?", "forall", "mu"],
 	Token.reservedOpNames = ["\\", ".",":","::","=","+","-","*","-","/","==",
 							"/=","<",">","<=",">=","->","{","}","[","]"],
 	Token.caseSensitive   = True }
@@ -112,6 +113,13 @@ expression =
 	try projectionTupleExpression <|>
 	try projectionRecordExpression <|>
 	caseExpression <|>
+	nilExpression <|>
+	try emptyListExpression <|>
+	consExpression <|>
+	try consOperatorExpression <|>
+	isNilExpression <|>
+	headExpression <|>
+	tailExpression <|>
 	foldExpression <|>
 	unfoldExpression <|>
 	operatorExpression <?> "expression"
@@ -126,6 +134,7 @@ parensExpression =
 	try tupleExpression <|>
 	try recordExpression <|>
 	tagExpression <|>
+	listExpression <|>
 	parens expression <?> "delimited expression"
 
 -- operators
@@ -304,6 +313,85 @@ tagExpression = do
 	; t <- typeParser
 	; return $ Tag l e t } <?> "tag"
 
+-- nil
+nilExpression :: Parser Expression
+nilExpression = do
+	{ reserved "nil"
+	; reservedOp "["
+	; t <- typeParser
+	; reservedOp "]"
+	; return $ Nil t } <?> "empty list (nil)"
+
+-- empty list
+emptyListExpression :: Parser Expression
+emptyListExpression = do
+	{ reservedOp "["
+	; reservedOp "]"
+	; reserved "as"
+	; t <- typeParser
+	; return $ Nil t } <?> "empty list"
+
+-- cons
+consExpression :: Parser Expression
+consExpression = do
+	{ reserved "cons"
+	; reservedOp "["
+	; t <- typeParser
+	; reservedOp "]"
+	; e1 <- parensExpression
+	; e2 <- parensExpression
+	; return $ Cons t e1 e2 } <?> "list constructor"
+
+-- cons operator
+consOperatorExpression :: Parser Expression
+consOperatorExpression = do
+	{ e1 <- parensExpression
+	; reservedOp ":"
+	; e2 <- parensExpression
+	; reserved "as"
+	; t <- typeParser
+	; return $ Cons t e1 e2 } <?> "list constructor operator"
+
+-- list
+listExpression :: Parser Expression
+listExpression = do
+	{ reservedOp "["
+	; es <- commaSep1 expression
+	; reservedOp "]"
+	; reserved "as"
+	; t <- typeParser
+	; return $ foldr (Cons t) (Nil t) es } <?> "list"
+
+-- isnil
+isNilExpression :: Parser Expression
+isNilExpression = do
+	{ reserved "isnil"
+	; reservedOp "["
+	; t <- typeParser
+	; reservedOp "]"
+	; e <- parensExpression
+	; return $ IsNil t e } <?> "test for empty list"
+
+-- head
+headExpression :: Parser Expression
+headExpression = do
+	{ reserved "head"
+	; reservedOp "["
+	; t <- typeParser
+	; reservedOp "]"
+	; e <- parensExpression
+	; return $ Head t e } <?> "head of a list"
+
+-- tail
+tailExpression :: Parser Expression
+tailExpression = do
+	{ reserved "tail"
+	; reservedOp "["
+	; t <- typeParser
+	; reservedOp "]"
+	; e <- parensExpression
+	; return $ Tail t e } <?> "tail of a list"
+
 -- fold
 foldExpression :: Parser Expression
 foldExpression = do
@@ -354,7 +442,8 @@ typ =
 	muType <|>
 	tupleType <|>
 	recordType <|>
-	variantType
+	variantType <|>
+	listType
 
 -- type variable
 varType :: Parser Type
@@ -423,6 +512,12 @@ variantType :: Parser Type
 variantType = (angles $ do
 	{ ts <- commaSep1 binding
 	; return $ VariantType ts }) <?> "variant type"
+
+-- list type
+listType :: Parser Type
+listType = (brackets $ do
+	{ t <- typeParser
+	; return $ ListType t }) <?> "list type"
 
 -- binding of variable with type
 binding :: Parser (Var, Type)
