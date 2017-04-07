@@ -530,6 +530,62 @@ generateConstraints (ctx, Tag label expr typ) = do
 		let typedExpr = TypeInformation typ' (Tag label expr_typed typ)
 		return (typ', constraints ++ [Consistency typ typ'], typedExpr)
 
+-- (Cnil) if expression is an empty list
+generateConstraints (ctx, Nil typ) = do
+	-- return type along with all the constraints
+	return (ListType typ, [], TypeInformation (ListType typ) $ Nil typ)
+
+-- (Ccons) if expression is a list constructor
+generateConstraints (ctx, Cons typ expr1 expr2) = do
+	-- build for each expression a type assignment
+	let typeAssignment1 = (ctx, expr1)
+	let typeAssignment2 = (ctx, expr2)
+	-- obtain type and constraints for both expressions
+	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
+	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
+	(ListType t', constraints3) <- patternMatchList t2
+	-- build typed expression
+	let typedExpr = TypeInformation (ListType typ) (Cons typ expr1_typed expr2_typed)
+	-- return type along with all the constraints
+	return (ListType typ, constraints1 ++ constraints2 ++ constraints3 ++
+		[Consistency t1 typ, Consistency t' typ], typedExpr)
+
+-- (Cisnil) if expression is a test for empty list
+generateConstraints (ctx, IsNil typ expr) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(ListType t', constraints') <- patternMatchList t
+	-- build typed expression
+	let typedExpr = TypeInformation BoolType (IsNil typ expr_typed)
+	-- return type along with all the constraints
+	return (BoolType, constraints ++ constraints' ++ [Consistency t' typ], typedExpr)
+
+-- (Chead) if expression is the head of a list
+generateConstraints (ctx, Head typ expr) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(ListType t', constraints') <- patternMatchList t
+	-- build typed expression
+	let typedExpr = TypeInformation typ (Head typ expr_typed)
+	-- return type along with all the constraints
+	return (typ, constraints ++ constraints' ++ [Consistency t' typ], typedExpr)
+
+-- (Ctail) if expression is the tail of a list
+generateConstraints (ctx, Tail typ expr) = do
+	-- build type assignment
+	let typeAssignment = (ctx, expr)
+	-- obtain type and constraints for type assignment
+	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(ListType t', constraints') <- patternMatchList t
+	-- build typed expression
+	let typedExpr = TypeInformation (ListType typ) (Tail typ expr_typed)
+	-- return type along with all the constraints
+	return (ListType typ, constraints ++ constraints' ++ [Consistency t' typ], typedExpr)
+
 -- (Cfold) if expression is a fold
 generateConstraints (ctx, Fold typ expr) = do
 	-- build type assignment
@@ -751,6 +807,11 @@ meet t1 t2
 		-- get resulting constraints
 		let cs = map snd results
 		return (VariantType $ zip labels1 ts, concat cs)
+	| isListType t1 && isListType t2 = do
+		let	(ListType t1') = t1
+		let (ListType t2') = t2
+		(t, constraints) <- meet t1' t2'
+		return (ListType t, constraints)
 	| isMuType t1 && isMuType t2 && compareVars t1 t2 = do
 		let (Mu var1 t1') = t1
 		let (Mu var2 t2') = t2
@@ -894,6 +955,29 @@ patternMatchVariant labels t
 		throwError $ "Error: Type " ++ (show t) ++ " is not a variant type!!"
 	-- number of alternatives
 	where n = length labels
+
+-- get components of list type
+patternMatchList :: Type -> StateT Int (Except String) (Type, Constraints)
+patternMatchList t
+	-- if t is type variable
+	| isVarType t = do
+		-- create a new type variables t'
+		i <- get
+		put (i+1)
+		let t' = newTypeVar i
+		-- return types and equality relation t =C [t']
+		return (ListType t', [Equality t (ListType t')])
+	-- if t is sum type
+	| isListType t = do
+		-- return types
+		return (t, [])
+	-- if t is dynamic type
+	| isDynType t = do
+		-- return dynamic typ
+		return (ListType DynType, [])
+	-- throw error
+	| otherwise =
+		throwError $ "Error: Type " ++ (show t) ++ " is not a list type!!"
 
 -- get components of recursive type
 patternMatchMu :: Var -> Type

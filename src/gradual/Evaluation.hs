@@ -631,6 +631,88 @@ evaluate e@(Tag label expr typ)
 		in Tag label v typ
 	| otherwise = e
 
+-- if expression is a empty list
+evaluate e@(Nil _) = e
+
+-- if expression is a list constructor
+evaluate e@(Cons t expr1 expr2)
+	-- push blames to top level
+	| isBlame expr1 = expr1
+	| isBlame expr2 = expr2
+	-- push errors to top level
+	| isError expr1 = expr1
+	| isError expr2 = expr2
+	-- reduce expr1
+	| not $ isValue expr1 =
+		let v1 = evaluate expr1
+		in evaluationStyle $ Cons t v1 expr2
+	-- reduce expr2
+	| not $ isValue expr2 =
+		let v2 = evaluate expr2
+		in evaluationStyle $ Cons t expr1 v2
+	| otherwise = e
+
+-- if expression is a test for empty list
+evaluate e@(IsNil t expr)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
+	-- reduce expr1
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluationStyle $ IsNil t v
+	-- if is nil
+	| isNil expr = evaluationStyle (Bool True)
+	-- if is cons
+	| isCons expr = evaluationStyle (Bool False)
+	-- C-IsNil - simulate casts on data types
+	| isCast expr =
+		let	(Cast (ListType t1) (ListType t2) expr') = expr
+		in evaluationStyle $ IsNil t1 expr'
+
+-- if expression is a head of a list
+evaluate e@(Head t expr)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
+	-- reduce expr1
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluationStyle $ Head t v
+	-- is nil
+	| isNil expr = evaluationStyle $ Error "*** Exception: empty list"
+	-- is cons
+	| isCons expr =
+		let (Cons t' expr1 expr2) = expr
+		in evaluationStyle $ expr1
+	-- C-Head - simulate casts on datatypes
+	| isCast expr =
+		let (Cast (ListType t1) (ListType t2) expr') = expr
+		in evaluationStyle $ Cast t1 t2 $ Head t1 expr'
+
+-- if expression is a tail of a list
+evaluate e@(Tail t expr)
+	-- push blames to top level
+	| isBlame expr = expr
+	-- push errors to top level
+	| isError expr = expr
+	-- reduce expr1
+	| not $ isValue expr =
+		let v = evaluate expr
+		in evaluationStyle $ Tail t v
+	-- is nil
+	| isNil expr = evaluationStyle $ Error "*** Exception: empty list"
+	-- is cons
+	| isCons expr =
+		let (Cons t' expr1 expr2) = expr
+		in evaluationStyle $ expr2
+	-- C-Tail - simulate casts on datatypes
+	| isCast expr =
+		let (Cast (ListType t1) (ListType t2) expr') = expr
+		in evaluationStyle $ Cast (ListType t1) (ListType t2) $ Tail t1 expr'
+
 -- if expression is a fold
 evaluate e@(Fold typ expr)
 	-- push blame to top level

@@ -34,6 +34,8 @@ data Type
 	| SumType Type Type
 	-- Variant type: <Labels:Types>
 	| VariantType [(Label, Type)]
+	-- List type: [Type]
+	| ListType Type
 	-- Recursive type: µVar.Type
 	| Mu Var Type
 	deriving (Show, Eq)
@@ -53,18 +55,55 @@ type Message = String
 
 -- Type Mapping
 mapType :: (Type -> Type) -> Type -> Type
+
+-- Type variable
 mapType f t@(VarType var) = f t
-mapType f t@(ArrowType t1 t2) = f (ArrowType (mapType f t1) (mapType f t2))
+
+-- Arrow type
+mapType f t@(ArrowType t1 t2) =
+	f (ArrowType (mapType f t1) (mapType f t2))
+
+-- Integer type
 mapType f t@(IntType) = f t
+
+-- Boolean type
 mapType f t@(BoolType) = f t
+
+-- Dynamic type
 mapType f t@(DynType) = f t
-mapType f t@(ForAll var t') = f (ForAll var $ mapType f t')
+
+-- For all quantifier
+mapType f t@(ForAll var t') =
+	f (ForAll var $ mapType f t')
+
+-- Unit typ
 mapType f t@(UnitType) = f t
-mapType f t@(ProductType t1 t2) = f (ProductType (mapType f t1) (mapType f t2))
-mapType f t@(TupleType ts) = f (TupleType $ map (mapType f) ts)
-mapType f t@(RecordType ts) = f (RecordType $ map (\x -> (fst x, mapType f $ snd x)) ts)
-mapType f t@(SumType t1 t2) = f (SumType (mapType f t1) (mapType f t2))
-mapType f t@(VariantType ts) = f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
+
+-- Product type
+mapType f t@(ProductType t1 t2) =
+	f (ProductType (mapType f t1) (mapType f t2))
+
+-- Tuple type
+mapType f t@(TupleType ts) =
+	f (TupleType $ map (mapType f) ts)
+
+-- Record type
+mapType f t@(RecordType ts) =
+	f (RecordType $ map (\x -> (fst x, mapType f $ snd x)) ts)
+
+-- Sum type
+mapType f t@(SumType t1 t2) =
+	f (SumType (mapType f t1) (mapType f t2))
+
+-- Variant type
+mapType f t@(VariantType ts) =
+	f (VariantType $ map (\x -> (fst x, mapType f $ snd x)) ts)
+
+-- List type
+mapType f t@(ListType t') =
+	f (ListType (mapType f t'))
+
+-- Recursive type
 mapType f t@(Mu var t') = f (Mu var $ mapType f t')
 
 -- CHECKS
@@ -129,6 +168,11 @@ isVariantType :: Type -> Bool
 isVariantType (VariantType _) = True
 isVariantType _ = False
 
+-- check if it's a list type
+isListType :: Type -> Bool
+isListType (ListType _) = True
+isListType _ = False
+
 -- check if it's a recursive type
 isMuType :: Type -> Bool
 isMuType (Mu _ _) = True
@@ -146,6 +190,7 @@ isGroundType (TupleType ts) = all isDynType ts
 isGroundType (RecordType ts) = all (\x -> isDynType $ snd x) ts
 isGroundType (SumType DynType DynType) = True
 isGroundType (VariantType ts) = all (\x -> isDynType $ snd x) ts
+isGroundType (ListType DynType) = True
 isGroundType (Mu _ DynType) = True
 isGroundType _ = False
 
@@ -189,6 +234,7 @@ getGroundType (TupleType ts) = TupleType $ map (\x -> DynType) ts
 getGroundType (RecordType ts) = RecordType $ map (\x -> (fst x, DynType)) ts
 getGroundType (SumType _ _) = SumType DynType DynType
 getGroundType (VariantType ts) = VariantType $ map (\x -> (fst x, DynType)) ts
+getGroundType (ListType _) = ListType DynType
 getGroundType (Mu var _) = Mu var DynType
 
 -- get label and type from record type
@@ -205,27 +251,57 @@ type TypeSubstitution = (Type, Type)
 
 -- subsitute type
 substituteType :: TypeSubstitution -> Type -> Type
+
+-- Type variable
 substituteType s@(old, new) t@(VarType var)
 	| old == t = new
 	| otherwise = t
+
+-- Arrow type
 substituteType s@(old, new) t@(ArrowType t1 t2) =
 	ArrowType (substituteType s t1) (substituteType s t2)
+
+-- Integer type
 substituteType s@(old, new) t@(IntType) = t
+
+-- Boolean type
 substituteType s@(old, new) t@(BoolType) = t
+
+-- Dynamic type
 substituteType s@(old, new) t@(DynType) = t
+
+-- for all quantifier
 substituteType s@(old, new) t@(ForAll var t') =
 	ForAll var $ substituteType s t'
+
+-- Unit type
 substituteType s@(old, new) t@(UnitType) = t
+
+-- Product type
 substituteType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (substituteType s t1) (substituteType s t2)
+
+-- Tuple type
 substituteType s@(old, new) t@(TupleType ts) =
 	TupleType $ map (substituteType s) ts
+
+-- Record type
 substituteType s@(old, new) t@(RecordType ts) =
 	RecordType $ map (\x -> (fst x, substituteType s $ snd x)) ts
+
+-- Sum type
 substituteType s@(old, new) t@(SumType t1 t2) =
 	SumType (substituteType s t1) (substituteType s t2)
+
+-- Variant type
 substituteType s@(old, new) t@(VariantType ts) =
 	VariantType $ map (\x -> (fst x, substituteType s $ snd x)) ts
+
+-- List type
+substituteType s@(old, new) t@(ListType t') =
+	ListType (substituteType s t')
+
+-- Recursive type
 substituteType s@(old, new) t@(Mu var typ)
 	| isVarType old && isVarType new && var == oldVar =
 		Mu newVar $ substituteType s typ
@@ -237,25 +313,53 @@ substituteType s@(old, new) t@(Mu var typ)
 
 -- unfold type
 unfoldType :: (String, Type) -> Type -> Type
+
+-- Type variable
 unfoldType s@(old, new) t@(VarType var)
 	| old == var = new
 	| otherwise = t
+
+-- Arrow type
 unfoldType s@(old, new) t@(ArrowType t1 t2) =
 	ArrowType (unfoldType s t1) (unfoldType s t2)
+
+-- Integer type
 unfoldType s@(old, new) t@(IntType) = t
+
+-- Boolean type
 unfoldType s@(old, new) t@(BoolType) = t
+
+-- Dynamic type
 unfoldType s@(old, new) t@(DynType) = t
+
+-- Unit type
 unfoldType s@(old, new) t@(UnitType) = t
+
+-- Product type
 unfoldType s@(old, new) t@(ProductType t1 t2) =
 	ProductType (unfoldType s t1) (unfoldType s t2)
+
+-- Tuple type
 unfoldType s@(old, new) t@(TupleType ts) =
 	TupleType $ map (unfoldType s) ts
+
+-- Record type
 unfoldType s@(old, new) t@(RecordType ts) =
 	RecordType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
+
+-- Sum type
 unfoldType s@(old, new) t@(SumType t1 t2) =
 	SumType (unfoldType s t1) (unfoldType s t2)
+
+-- Variant type
 unfoldType s@(old, new) t@(VariantType ts) =
 	VariantType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
+
+-- List type
+unfoldType s@(old, new) t@(ListType t') =
+	ListType (unfoldType s t')
+
+-- Recursive type
 unfoldType s@(old, new) t@(Mu var typ)
 	| old == var = unfoldType s typ
 	| otherwise = t
@@ -319,6 +423,7 @@ countTypeVariable t@(VariantType ts) =
 			(nub $ fst x ++ fst y,
 			nub $ snd x ++ snd y)) result
 	in (exclude, include)
+countTypeVariable t@(ListType t') = countTypeVariable t'
 countTypeVariable t@(Mu var typ) =
 	let (exclude, include) = countTypeVariable typ
 	in (exclude ++ [var], include)

@@ -71,6 +71,13 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		let constraints =
 			map (\x -> Consistency (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints types (constraints ++ cs) counter
+	-- U (([t1] ~C [t2]) : cs)
+	-- => U ((t1 ~C t2) : cs)
+	| isListType t1 && isListType t2 = do
+		let (ListType t1') = t1
+		let (ListType t2') = t2
+		let constraints = [Consistency t1' t2']
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((μX.T1 ~C μX.T2) : cs)
 	-- => U ((T1 ~C T2) : cs)
 	| isMuType t1 && isMuType t2 && compareVars t1 t2 = do
@@ -186,6 +193,14 @@ unifyConstraints types ((Consistency t1 t2) : cs) counter
 		let variantVarType = zip labels typeVars
 		let constraints = [Equality t1 $ VariantType variantVarType]
 		unifyConstraints types (cs' ++ constraints ++ cs) (counter+n)
+	-- U ((t1 ~C [t2]) : cs), t1 ∉ Vars([t2]])
+	-- => U ((t1' ~C t2) : (t1 =C [t1']) : cs)
+	| isVarType t1 && isListType t2 && (not $ belongs t1 t2) = do
+		let	t1' = newTypeVar counter
+		let (ListType t2') = t2
+		let constraints = [Consistency t1' t2',
+			Equality t1 (ListType t1')]
+		unifyConstraints types (constraints ++ cs) (counter+1)
 	-- U ((t1 ~C μX.t2) : cs), t1 ∉ Vars(μX.t2)
 	-- => U ((t11 ~C t2) : (t1 =C μX.t11))
 	| isVarType t1 && isMuType t2 && (not $ belongs t1 t2) = do
@@ -248,6 +263,13 @@ unifyConstraints types ((Equality t1 t2) : cs) counter
 		let constraints =
 			map (\x -> Equality (fst x) (snd x)) $ zip types1 types2
 		unifyConstraints types (constraints ++ cs) counter
+	-- U (([t1] =C [t2]) : cs)
+	-- => U ((t1 =C t2) : cs)
+	| isListType t1 && isListType t2 = do
+		let	(ListType t1') = t1
+		let (ListType t2') = t2
+		let constraints = [Equality t1' t2']
+		unifyConstraints types (constraints ++ cs) counter
 	-- U ((μX.T1 =C μX.T2) : cs)
 	-- => U ((T1 =C T2) : cs)
 	| isMuType t1 && isMuType t2 && compareVars t1 t2 = do
@@ -295,6 +317,9 @@ belongs (VarType var) typ
 	| isVariantType typ =
 		let	(_, types) = fromVariantType typ
 		in any (belongs $ VarType var) types
+	| isListType typ =
+		let (ListType t) = typ
+		in belongs (VarType var) t
 	| isMuType typ =
 		let (Mu var' t') = typ
 		in if var' == var

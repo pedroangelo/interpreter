@@ -275,6 +275,60 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
 insertCasts e@(TypeInformation typ (Tag label expr t)) =
 	TypeInformation typ $ Tag label (insertCasts expr) t
 
+-- if expression is a empty list
+insertCasts e@(TypeInformation _ (Nil _)) = e
+
+-- if expression is a list constructor
+insertCasts e@(TypeInformation typ (Cons t expr1 expr2)) =
+	let
+		-- insert casts
+		expr1' = insertCasts expr1
+		expr2' = insertCasts expr2
+		-- build types
+		TypeInformation t1 _ = expr1'
+		TypeInformation pm _ = expr2'
+		pm' = patternMatchList pm
+		-- build casts
+		cast1 = Cast t1 t expr1'
+		cast2 = Cast pm (ListType t) expr2'
+	in TypeInformation typ $ Cons t cast1 cast2
+
+-- if expression is a test for empty list
+insertCasts e@(TypeInformation typ (IsNil t expr)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- build types
+		TypeInformation pm _ = expr'
+		pm' = patternMatchList pm
+		-- build casts
+		cast = Cast pm (ListType t) expr'
+	in TypeInformation typ $ IsNil t cast
+
+-- if expression is a head of a list
+insertCasts e@(TypeInformation typ (Head t expr)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- build types
+		TypeInformation pm _ = expr'
+		pm' = patternMatchList pm
+		-- build casts
+		cast = Cast pm (ListType t) expr'
+	in TypeInformation typ $ Head t cast
+
+-- if expression is a tail of a list
+insertCasts e@(TypeInformation typ (Tail t expr)) =
+	let
+		-- insert casts
+		expr' = insertCasts expr
+		-- build types
+		TypeInformation pm _ = expr'
+		pm' = patternMatchList pm
+		-- build casts
+		cast = Cast pm (ListType t) expr'
+	in TypeInformation typ $ Tail t cast
+
 -- if expression is a fold
 insertCasts e@(TypeInformation typ (Fold t expr)) =
 	TypeInformation typ $ Fold t $ insertCasts expr
@@ -325,6 +379,11 @@ patternMatchSum e@(DynType) = SumType DynType DynType
 patternMatchVariant :: Type -> [String] -> Type
 patternMatchVariant e@(VariantType _) labels = e
 patternMatchVariant e@(DynType) labels = VariantType $ map (\x -> (x, DynType)) labels
+
+-- obtain pattern match type for list
+patternMatchList :: Type -> Type
+patternMatchList e@(ListType _) = e
+patternMatchList e@(DynType) = ListType DynType
 
 -- obtain pattern math type for recursive type
 patternMatchMu :: Type -> Var -> Type
@@ -382,11 +441,15 @@ joinType (VariantType list1) (VariantType list2) =
 				in (label, joinType t1 t2))
 			$ zip list1 list2
 	in VariantType list
+joinType (ListType t1) (ListType t2) =
+	let
+		t = joinType t1 t2
+		in ListType t
 joinType (Mu var1 t1) (Mu var2 t2) =
 	let
 		t = joinType t1 t2
 	in Mu var1 t
 joinType t1 t2
-	| (not (isArrowType t1) || not (isProductType t1) || not (isTupleType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isMuType t1)) &&
-	 	(not (isArrowType t2) || not (isProductType t2) || not (isTupleType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isMuType t2)) =
+	| (not (isArrowType t1) || not (isProductType t1) || not (isTupleType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isListType t1) || not (isMuType t1)) &&
+	 	(not (isArrowType t2) || not (isProductType t2) || not (isTupleType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isListType t2) || not (isMuType t2)) =
 		if (isDynType t1) then t2 else t1

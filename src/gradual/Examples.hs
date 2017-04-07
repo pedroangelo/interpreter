@@ -220,9 +220,7 @@ gcd' = LetRec "gcd"
 
 test_fix = Fix $ Annotation "s" (ArrowType DynType IntType) $ Annotation "x" DynType  $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "s") (Subtraction (Variable "x") (Int 1))) (Int 0)
 
-test_fix2 = Abstraction "f" $ Annotation "x" DynType $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "f") (Subtraction (Variable "x") (Int 1))) (Int 0)
-
-test_fix3 = LetRec "f" (Annotation "x" DynType $ If (GreaterThan (Variable "x") (Int 0)) (Application (Variable "f") (Subtraction (Variable "x") (Int 1))) (Int 0)) (Variable "f")
+test_fix_simple = Fix $ Abstraction "s" $ Annotation "x" DynType $ If (Bool True) (Application (Variable "s") (Addition (Variable "x") (Int 0))) (Int 0)
 
 -- Examples to test let and letrec
 
@@ -483,7 +481,7 @@ intList' = unfoldType ("L", intList) intList
 
 nil = Fold intList $ LeftTag Unit intList'
 
-cons = Abstraction "n" $ Abstraction "l" $
+cons = Abstraction "n" $ Annotation "l" intList $
 	Fold intList $ RightTag (Pair (Variable "n") (Variable "l")) intList'
 
 isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l")
@@ -610,3 +608,47 @@ insertTree = Fix $ Abstraction "insertTree" $ Abstraction "i" $ Abstraction "t" 
 						("Left", Application getLeftSide (Variable "node")),
 						("Right", Let "r" (Application getRightSide (Variable "node")) $
 							Application (Application (Variable "insertTree") (Variable "i")) (Variable "r"))]) treeType')])]
+
+-- Lists
+listType = DynType
+
+list_1 = Cons listType (Int 1) $ Nil listType
+
+list_2 = Cons listType (Int 2) list_1
+
+list_true = Cons listType (Bool True) $ Nil listType
+
+list_1true = Cons listType (Int 1) list_true
+
+sumList = Fix $ Annotation "f" (ArrowType (ListType listType) IntType) $ Annotation "l" (ListType listType) $
+	If (IsNil listType (Variable "l"))
+		(Int 0)
+		(Addition
+			(Head listType $ Variable "l")
+			(Application
+				(Variable "f")
+				(Tail listType $ Variable "l")))
+
+lengthList = Fix $ Annotation "f" (ArrowType (ListType listType) IntType) $ Annotation "l" (ListType listType) $
+	If (IsNil listType $ Variable "l")
+		(Int 0)
+		(Addition
+			(Int 1)
+			(Application
+				(Variable "f")
+				(Tail listType $ Variable "l")))
+
+mapList = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $
+	If (IsNil listType (Variable "l"))
+		(Nil listType)
+		(Cons listType
+			(Application
+				(Variable "f")
+				(Head listType $ Variable "l"))
+			(Application
+				(Application
+					(Variable "m")
+					(Variable "f"))
+				(Tail listType $ Variable "l")))
+
+mapList_func f l = Application (Application mapList f) l
