@@ -20,9 +20,9 @@ data Type
 	| BoolType
 	-- Dynamic type: ?
 	| DynType
-	-- For all quantifier: ∀Var.Type
+	-- For all quantifier: forall Var.Type
 	| ForAll Var Type
-	-- Unit type: ()
+	-- Unit type: Unit
 	| UnitType
 	-- Product type: Type × Type
 	| ProductType Type Type
@@ -36,7 +36,7 @@ data Type
 	| VariantType [(Label, Type)]
 	-- List type: [Type]
 	| ListType Type
-	-- Recursive type: µVar.Type
+	-- Recursive type: mu Var.Type
 	| Mu Var Type
 	deriving (Show, Eq)
 

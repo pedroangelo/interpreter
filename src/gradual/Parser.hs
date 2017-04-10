@@ -6,7 +6,7 @@ import Types
 import Examples
 
 -- Parsec
-import Text.Parsec
+import Text.Parsec hiding (label, labels)
 import Text.Parsec.String (Parser)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language (emptyDef)
@@ -16,21 +16,21 @@ import qualified Text.Parsec.Token as Token
 -- language definition for lexer
 languageDefinition :: Token.LanguageDef ()
 languageDefinition = emptyDef {
-	Token.commentStart    = "{-",
-	Token.commentEnd      = "-}",
-	Token.commentLine     = "--",
-	Token.nestedComments  = False,
-	Token.identStart      = letter,
-	Token.identLetter     = alphaNum <|> oneOf "_'",
-	Token.opStart         = oneOf ":!#$%&*+./<=>?@\\^|-~",
-	Token.opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~",
-	Token.reservedNames   = ["true", "false", "let", "in", "fix", "letrec",
+	Token.commentStart		= "{-",
+	Token.commentEnd		= "-}",
+	Token.commentLine		= "--",
+	Token.nestedComments	= False,
+	Token.identStart		= lower,
+	Token.identLetter		= alphaNum <|> oneOf "_'",
+	Token.opStart			= oneOf ":!#$%&*+./<=>?@\\^|-~",
+	Token.opLetter			= oneOf ":!#$%&*+./<=>?@\\^|-~",
+	Token.reservedNames		= ["true", "false", "let", "in", "fix", "letrec",
 							"if", "then", "else", "unit", "as", "case", "of",
 							"nil", "cons", "isnil", "head", "tail", "fold",
-							"unfold", "int", "bool", "?", "forall", "mu"],
-	Token.reservedOpNames = ["\\", ".",":","::","=","+","-","*","-","/","==",
+							"unfold", "Int", "Bool", "Unit", "Dyn", "forall", "mu"],
+	Token.reservedOpNames	= ["\\", ".",":","::","=","+","-","*","-","/","==",
 							"/=","<",">","<=",">=","->","{","}","[","]"],
-	Token.caseSensitive   = True }
+	Token.caseSensitive		= True }
 
 -- create lexer according to language definition
 lexer :: Token.TokenParser ()
@@ -92,6 +92,15 @@ dot = Token.dot lexer
 commaSep1 :: Parser a -> Parser [a]
 commaSep1 = Token.commaSep1 lexer
 
+
+-- label
+label :: Parser String
+label = do
+	{ a <- upper
+	; as <- many $ alphaNum <|> oneOf "_'"
+	; whiteSpace
+	; return (a:as) }
+
 -- Expression Parser
 expressionParser = do
 	whiteSpace
@@ -104,8 +113,8 @@ expressionParser = do
 expression :: Parser Expression
 expression =
 	try abstractionExpression <|>
-	annotationExpression <|>
 	try ascriptionExpression <|>
+	annotationExpression <|>
 	letExpression <|>
 	fixExpression <|>
 	letrecExpression <|>
@@ -117,6 +126,7 @@ expression =
 	try emptyListExpression <|>
 	consExpression <|>
 	try consOperatorExpression <|>
+	listExpression <|>
 	isNilExpression <|>
 	headExpression <|>
 	tailExpression <|>
@@ -134,7 +144,6 @@ parensExpression =
 	try tupleExpression <|>
 	try recordExpression <|>
 	tagExpression <|>
-	listExpression <|>
 	parens expression <?> "delimited expression"
 
 -- operators
@@ -207,7 +216,7 @@ letExpression = do
 fixExpression :: Parser Expression
 fixExpression = do
 	{ reserved "fix"
-	; e <- expression
+	; e <- parensExpression
 	; return $ Fix e } <?> "fixed point"
 
 -- let binding
@@ -293,7 +302,7 @@ alternative :: Parser Alternative
 alternative = do
 	{ reservedOp "|"
 	; reservedOp "<"
-	; l <- identifier
+	; l <- label
 	; reservedOp "="
 	; v <- identifier
 	; reservedOp ">"
@@ -305,7 +314,7 @@ alternative = do
 tagExpression :: Parser Expression
 tagExpression = do
 	{ reservedOp "<"
-	; l <- identifier
+	; l <- label
 	; reservedOp "="
 	; e <- parensExpression
 	; reservedOp ">"
@@ -429,10 +438,14 @@ binary string operator associativity =
 	Infix (do {reservedOp string; return operator}) associativity
 
 -- Type Parser
-typeParser = buildExpressionParser typeOperators typ
+typeParser = typ
 
 typ :: Parser Type
 typ =
+	arrowOperator
+
+parensType :: Parser Type
+parensType =
 	varType <|>
 	intType <|>
 	boolType <|>
@@ -440,92 +453,95 @@ typ =
 	dynType <|>
 	forAllType <|>
 	muType <|>
-	tupleType <|>
+	try tupleType <|>
 	recordType <|>
 	variantType <|>
-	listType
+	listType <|>
+	parens typ
 
--- type variable
+-- Type variable: Var
 varType :: Parser Type
 varType = do
 	{ var <- identifier
 	; return $ VarType var } <?> "type variable"
 
--- int type
+-- Arrow type: Type -> Type
+arrowOperator :: Parser Type
+arrowOperator = buildExpressionParser
+	[[binary "->" ArrowType AssocRight]] parensType
+
+-- Integer type: Int
 intType :: Parser Type
 intType = do
-	{ reserved "int"
+	{ reserved "Int"
 	; return IntType } <?> "integer type"
 
--- bool type
+-- Boolean type: Bool
 boolType :: Parser Type
 boolType = do
-	{ reserved "bool"
+	{ reserved "Bool"
 	; return BoolType } <?> "boolean type"
 
--- dynamic type
+-- Dynamic type: ?
 dynType :: Parser Type
 dynType = do
-	{ reserved "?"
+	{ reserved "Dyn"
 	; return DynType } <?> "dynamic type"
 
--- unit type
+-- Unit type: Unit
 unitType :: Parser Type
 unitType = do
-	{ reserved "unit"
+	{ reserved "Unit"
 	; return UnitType } <?> "unit type"
 
--- for all quantifier
+-- For all quantifier: forall Var.Type
 forAllType :: Parser Type
 forAllType = do
 	{ reserved "forall"
 	; var <- identifier
 	; reservedOp "."
-	; t  <- typeParser
+	; t  <- typ
 	; return $ ForAll var t } <?> "for all quantifier"
 
--- recursive type
+-- Tuple type: (Types)
+tupleType :: Parser Type
+tupleType = (parens $ do
+	{ t <- typ
+	; comma
+	; ts <- commaSep1 typ
+	; return $ TupleType (t:ts) }) <?> "tuple type"
+
+-- Record type: {Labels:Types}
+recordType :: Parser Type
+recordType = (braces $ do
+	{ ts <- commaSep1 (do
+		{ var <- identifier
+		; reservedOp ":"
+		; t <- typ
+		; return (var, t)})
+	; return $ RecordType ts }) <?> "record type"
+
+-- Variant type: <Labels:Types>
+variantType :: Parser Type
+variantType = (angles $ do
+	{ ts <- commaSep1 (do
+		{ var <- label
+		; reservedOp ":"
+		; t <- typ
+		; return (var, t)})
+	; return $ VariantType ts }) <?> "variant type"
+
+-- List type: [Type]
+listType :: Parser Type
+listType = (brackets $ do
+	{ t <- typ
+	; return $ ListType t }) <?> "list type"
+
+-- Recursive type: mu Var.Types
 muType :: Parser Type
 muType = do
 	{ reserved "mu"
 	; var <- identifier
 	; reservedOp "."
-	; t  <- typeParser
+	; t  <- typ
 	; return $ Mu var t } <?> "recursive type"
-
--- tuple type
-tupleType :: Parser Type
-tupleType = (parens $ do
-	{ t <- typeParser
-	; comma
-	; ts <- commaSep1 typeParser
-	; return $ TupleType (t:ts) }) <?> "tuple type"
-
--- record type
-recordType :: Parser Type
-recordType = (braces $ do
-	{ ts <- commaSep1 binding
-	; return $ RecordType ts }) <?> "record type"
-
--- variant type
-variantType :: Parser Type
-variantType = (angles $ do
-	{ ts <- commaSep1 binding
-	; return $ VariantType ts }) <?> "variant type"
-
--- list type
-listType :: Parser Type
-listType = (brackets $ do
-	{ t <- typeParser
-	; return $ ListType t }) <?> "list type"
-
--- binding of variable with type
-binding :: Parser (Var, Type)
-binding = do
-	{ var <- identifier
-	; reservedOp ":"
-	; t <- typeParser
-	; return $ (var, t) } <?> "type variable binding"
-
--- type operators (arrow)
-typeOperators = [[binary "->" ArrowType AssocRight]]
