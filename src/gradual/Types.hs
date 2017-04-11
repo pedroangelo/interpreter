@@ -18,7 +18,7 @@ data Type
 	| IntType
 	-- Boolean type: Bool
 	| BoolType
-	-- Dynamic type: ?
+	-- Dynamic type: Dyn
 	| DynType
 	-- For all quantifier: forall Var.Type
 	| ForAll Var Type
@@ -36,7 +36,7 @@ data Type
 	| VariantType [(Label, Type)]
 	-- List type: [Type]
 	| ListType Type
-	-- Recursive type: mu Var.Type
+	-- Recursive type: rec Var.Type
 	| Mu Var Type
 	deriving (Show, Eq)
 

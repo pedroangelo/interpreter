@@ -116,8 +116,8 @@ prettyExpression (RightTag expr typ) = hsep
 -- Variants
 prettyExpression (CaseVariant expr alternatives) = nest 2 $ vsep
 	[text "case" <+> prettyExpression expr <+> text "of",
-	vcat (map (\x -> nest 2 $ hcat
-		[text "| <", text (fst3 x),	equals, text (snd3 x), text "> => ",
+	vcat (map (\x -> nest 2 $ hsep
+		[text "|", text (fst3 x), text (snd3 x), text "->",
 		prettyExpression (trd3 x)]) alternatives)]
 prettyExpression (Tag label expr typ) = hsep
 	[variant $ hcat [text label, equals, printParensExpression expr],
@@ -209,7 +209,7 @@ prettyType (ListType t) = brackets $ prettyType t
 
 -- Recursive type: mu Var.Type
 prettyType (Mu var typ) = hsep
-	[text "mu", text var, dot, prettyType typ]
+	[text "rec", text var, dot, prettyType typ]
 
 variant :: Doc -> Doc
 variant p = enclose langle rangle p

@@ -1,4 +1,7 @@
-module Parser where
+module Parser (
+	expressionParser,
+	typeParser
+) where
 
 -- Syntax & Types
 import Syntax
@@ -27,7 +30,7 @@ languageDefinition = emptyDef {
 	Token.reservedNames		= ["true", "false", "let", "in", "fix", "letrec",
 							"if", "then", "else", "unit", "as", "case", "of",
 							"nil", "cons", "isnil", "head", "tail", "fold",
-							"unfold", "Int", "Bool", "Unit", "Dyn", "forall", "mu"],
+							"unfold", "Int", "Bool", "Unit", "Dyn", "forall", "rec"],
 	Token.reservedOpNames	= ["\\", ".",":","::","=","+","-","*","-","/","==",
 							"/=","<",">","<=",">=","->","{","}","[","]"],
 	Token.caseSensitive		= True }
@@ -301,12 +304,9 @@ caseExpression = do
 alternative :: Parser Alternative
 alternative = do
 	{ reservedOp "|"
-	; reservedOp "<"
 	; l <- label
-	; reservedOp "="
 	; v <- identifier
-	; reservedOp ">"
-	; reservedOp "=>"
+	; reservedOp "->"
 	; e <- expression
 	; return $ (l, v, e) } <?> "alternative"
 
@@ -451,7 +451,6 @@ parensType =
 	boolType <|>
 	unitType <|>
 	dynType <|>
-	forAllType <|>
 	muType <|>
 	try tupleType <|>
 	recordType <|>
@@ -482,7 +481,7 @@ boolType = do
 	{ reserved "Bool"
 	; return BoolType } <?> "boolean type"
 
--- Dynamic type: ?
+-- Dynamic type: Dyn
 dynType :: Parser Type
 dynType = do
 	{ reserved "Dyn"
@@ -493,15 +492,6 @@ unitType :: Parser Type
 unitType = do
 	{ reserved "Unit"
 	; return UnitType } <?> "unit type"
-
--- For all quantifier: forall Var.Type
-forAllType :: Parser Type
-forAllType = do
-	{ reserved "forall"
-	; var <- identifier
-	; reservedOp "."
-	; t  <- typ
-	; return $ ForAll var t } <?> "for all quantifier"
 
 -- Tuple type: (Types)
 tupleType :: Parser Type
@@ -537,10 +527,10 @@ listType = (brackets $ do
 	{ t <- typ
 	; return $ ListType t }) <?> "list type"
 
--- Recursive type: mu Var.Types
+-- Recursive type: rec Var.Types
 muType :: Parser Type
 muType = do
-	{ reserved "mu"
+	{ reserved "rec"
 	; var <- identifier
 	; reservedOp "."
 	; t  <- typ
