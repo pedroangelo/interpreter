@@ -25,16 +25,17 @@ generateConstraints (ctx, Variable var) = do
 		throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
 	else do
 		-- retrieve type
-		let finalType = fromJust $ varType
+		let (finalType, constraints) = fromJust $ varType
 		i <- get
 		-- replace quantified variables by type variables
 		-- instantiation of Damas-Milner
-		let (finalType', i') = runState (replaceQuantifiedVariables finalType) i
+		let ((finalType', constraints'), i') =
+			runState (replaceQuantifiedVariables finalType constraints) i
 		put (i')
 		-- build typed expression
 		let typedExpr = TypeInformation finalType' (Variable var)
 		-- return type
-		return (finalType', [], typedExpr)
+		return (finalType', constraints', typedExpr)
 
 -- (Cλ) if expression is a abstraction
 generateConstraints (ctx, Abstraction var expr) = do
@@ -44,7 +45,7 @@ generateConstraints (ctx, Abstraction var expr) = do
 	-- create new type variable
 	let newVar1 = newTypeVar i
 	-- create a binding between the abstraction variable and the new type variable
-	let binding = (var, ForAll "" newVar1)
+	let binding = (var, (ForAll "" newVar1, []))
 	-- build type assignment with new binding
 	let typeAssignment = (binding : ctx, expr)
 	-- obtain type and generate constraints for new type assignment
@@ -85,7 +86,7 @@ generateConstraints (ctx, Ascription expr typ) = do
 -- (Cλ:) if expression is a annotated abstraction
 generateConstraints (ctx, Annotation var typ expr) = do
 	-- create a binding between the abstraction variable and the annotated type
-	let binding = (var, ForAll "" typ)
+	let binding = (var, (ForAll "" typ, []))
 	-- build type assignment with new binding
 	let typeAssignment = (binding : ctx, expr)
 	-- obtain type and generate constraints for new type assignment
@@ -118,9 +119,9 @@ generateConstraints (ctx, Let var expr1 expr2)
 		-- obtain type and generate constraints for type assignment
 		(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
 		-- generalize type variables
-		let t1' = generalizeTypeVariables t1
+		let t1' = generalizeTypeVariables ctx t1
 		-- build type assignment for value
-		let typeAssignment2 = ((var, t1') : ctx, expr2)
+		let typeAssignment2 = ((var, (t1', constraints1)) : ctx, expr2)
 		-- obtain type and generate constraints for type assignment
 		(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
 		-- build typed expression
@@ -394,8 +395,8 @@ generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
 	(SumType t1' t2', constraints') <- patternMatchSum t
 	-- build for each expression in the application a type assignment
-	let typeAssignment1 = ((var1, t1') : ctx, expr1)
-	let typeAssignment2 = ((var2, t2') : ctx, expr2)
+	let typeAssignment1 = ((var1, (t1',[])) : ctx, expr1)
+	let typeAssignment2 = ((var2, (t2',[])) : ctx, expr2)
 	-- obtain type and constraints for both expressions
 	(t1, constraints1, expr1_typed) <- generateConstraints typeAssignment1
 	(t2, constraints2, expr2_typed) <- generateConstraints typeAssignment2
@@ -408,39 +409,27 @@ generateConstraints (ctx, Case expr (var1, expr1) (var2, expr2)) = do
 
 -- (Cinl) if expression is a left tag
 generateConstraints (ctx, LeftTag expr typ) = do
-	-- counter for variable creation
-	i <- get
-	put (i+2)
-	-- create new type variable
-	let newVar1 = newTypeVar i
-	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(SumType t1 _, constraints2) <- patternMatchSum typ
 	-- build typed expression
-	let typedExpr = TypeInformation (SumType newVar1 newVar2) $ LeftTag expr_typed typ
+	let typedExpr = TypeInformation typ $ LeftTag expr_typed typ
 	-- return type along with all the constraints
-	return ((SumType newVar1 newVar2), constraints ++
-		[Consistency typ (SumType newVar1 newVar2), Consistency t newVar1], typedExpr)
+	return (typ, constraints ++ constraints2 ++ [Consistency t t1], typedExpr)
 
 -- (Cinr) if expression is a right tag
 generateConstraints (ctx, RightTag expr typ) = do
-	-- counter for variable creation
-	i <- get
-	put (i+2)
-	-- create new type variable
-	let newVar1 = newTypeVar i
-	let newVar2 = newTypeVar (i+1)
 	-- build type assignment
 	let typeAssignment = (ctx, expr)
 	-- obtain type and constraints for type assignment
 	(t, constraints, expr_typed) <- generateConstraints typeAssignment
+	(SumType _ t2, constraints2) <- patternMatchSum typ
 	-- build typed expression
-	let typedExpr = TypeInformation (SumType newVar1 newVar2) $ RightTag expr_typed typ
+	let typedExpr = TypeInformation typ $ RightTag expr_typed typ
 	-- return type along with all the constraints
-	return ((SumType newVar1 newVar2), constraints ++
-		[Consistency typ (SumType newVar1 newVar2), Consistency t newVar2], typedExpr)
+	return (typ, constraints ++ [Consistency t t2], typedExpr)
 
 -- (Ccasevariant) if expression is a variant case
 generateConstraints (ctx, CaseVariant expr alternatives) = do
@@ -462,7 +451,7 @@ generateConstraints (ctx, CaseVariant expr alternatives) = do
 			-- get type from types
 			typ = fst x
 			-- add to context variable with new type
-			in ((var, typ) : ctx, expr'))
+			in ((var, (typ, [])) : ctx, expr'))
 		$ zip types alternatives
 	-- obtain type and constraints for expressions
 	results <- mapM generateConstraints typeAssignments
@@ -505,24 +494,11 @@ generateConstraints (ctx, Tag label expr typ) = do
 			let cs = [Equality typ (VariantType [(label, t)])]
 			return (typ, constraints ++ cs, typedExpr)
 		else do
-			-- number of alternatives
-			let n = length list
-			-- counter for variable creation
-			i <- get
-			put (i+n+1)
-			-- create new type variables
-			let typeVars = map newTypeVar [i..i+n]
-			-- get labels
-			let (labels, _) = fromVariantType typ
-			-- create list
-			let listVars = zip labels typeVars
 			-- build typed expression
-			let typedExpr = TypeInformation (VariantType listVars) (Tag label expr_typed typ)
-			-- obtain type according to tag
-			let tagTypeVar = fromJust $ lookup label listVars
+			let typedExpr = TypeInformation typ (Tag label expr_typed typ)
 			-- return type along with all the constraints
-			return (VariantType listVars, constraints ++
-				[Consistency (VariantType listVars) typ, Consistency tagTypeVar t], typedExpr)
+			return (typ, constraints ++
+				[Consistency (fromJust tagType) t], typedExpr)
 	-- if expression is annotated with other than variant type
 	else do
 		let typ' = VariantType [(label, t)]
@@ -658,18 +634,23 @@ generateConstraints (ctx, e@(Error msg)) = do
 	-- return type along with all the constraints
 	return (newVar1, [], typedExpr)
 
--- Replace type parameters with type variables
-replaceQuantifiedVariables :: Type -> State Int Type
-replaceQuantifiedVariables (ForAll var typ) = do
-	-- counter for variable creation
+-- Replace types bound by for all quantifiers with fresh variables
+replaceQuantifiedVariables :: Type -> Constraints -> State Int (Type, Constraints)
+replaceQuantifiedVariables typ constraints = do
+	-- collect bound type
+	let vars = collectBoundTypes typ
+	let lengthVars = length vars
+	-- counter for variables creation
 	i <- get
-	put (i+1)
-	-- obtain new type by replacing matched type parameters with fresh type variable
-	let typ' = substituteType (VarType var, newTypeVar i) typ
-	-- recursive call
-	replaceQuantifiedVariables typ'
--- return when no more ForAll quantifier
-replaceQuantifiedVariables e = return e
+	put (i + lengthVars)
+	-- generate lists of new types vriables
+	let newVars = map newTypeVar [i..i+lengthVars-1]
+	--- generate substitutions
+	let substitutions = map (\x -> (VarType $ fst x, snd x)) $ zip vars newVars
+	-- apply substitutions to type and constraints
+	let typ' = foldr substituteType (removeQuantifiers typ) substitutions
+	let constraints' = map (\x -> foldr substituteConstraint x substitutions) constraints
+	return (typ', constraints')
 
 -- generate constraints and type for codomain relation
 codomain :: Type -> StateT Int (Except String) (Type, Constraints)

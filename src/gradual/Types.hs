@@ -6,7 +6,7 @@ import Data.List
 
 -- Context holds bindings between variables and types
 type Context = [Bindings]
-type Bindings = (Var, Type)
+type Bindings = (Var, (Type, Constraints))
 
 -- Types in λ-calculus and extensions
 data Type
@@ -374,60 +374,73 @@ substituteConstraint s (Consistency t1 t2) =
 -- HELPER FUNCTIONS
 
 -- Bind type variables with ForAll quantifiers
-generalizeTypeVariables :: Type -> Type
-generalizeTypeVariables t =
+generalizeTypeVariables :: Context -> Type -> Type
+generalizeTypeVariables ctx t =
+	let
+		freeVarsContext = nub $ concat $ map (\x -> freeVariables $ fst $ snd x) ctx
+		freeVars = freeVariables t
+	-- insert forall quantifiers
+	in buildForAll t $ freeVars \\ freeVarsContext
+
+freeVariables :: Type -> [String]
+freeVariables t =
 	let
 		-- get list of type variables
-		(exclude, include) = countTypeVariable t
+		(exclude, include) = collectTypeVariables t
+		-- remove type variables that are not free
 		vars = (nub include) \\ exclude
-	-- insert forall quantifiers
-	in buildForAll t vars
+	in vars
 
--- Collect type variables into a list
-countTypeVariable :: Type -> ([String], [String])
-countTypeVariable t@(VarType var) = ([] , [var])
-countTypeVariable t@(ArrowType t1 t2) =
+-- collect all type variables
+collectTypeVariables :: Type -> ([String], [String])
+collectTypeVariables t@(VarType var) = ([] , [var])
+collectTypeVariables t@(ArrowType t1 t2) =
 	let
-		(exclude1, include1) = countTypeVariable t1
-		(exclude2, include2) = countTypeVariable t2
+		(exclude1, include1) = collectTypeVariables t1
+		(exclude2, include2) = collectTypeVariables t2
 	in (exclude1 ++ exclude2, include1 ++ include2)
-countTypeVariable t@(ForAll var t') = countTypeVariable t'
-countTypeVariable t@(ProductType t1 t2) =
-	let
-		(exclude1, include1) = countTypeVariable t1
-		(exclude2, include2) = countTypeVariable t2
-	in (exclude1 ++ exclude2, include1 ++ include2)
-countTypeVariable t@(TupleType ts) =
-	let
-		result = map countTypeVariable ts
-		(exclude, include) = foldr1 (\x -> \y ->
-			(nub $ fst x ++ fst y,
-			nub $ snd x ++ snd y)) result
-	in (exclude, include)
-countTypeVariable t@(RecordType ts) =
-	let
-		result = map (countTypeVariable . snd) ts
-		(exclude, include) = foldr1 (\x -> \y ->
-			(nub $ fst x ++ fst y,
-			nub $ snd x ++ snd y)) result
-	in (exclude, include)
-countTypeVariable t@(SumType t1 t2) =
-	let
-		(exclude1, include1) = countTypeVariable t1
-		(exclude2, include2) = countTypeVariable t2
-	in (exclude1 ++ exclude2, include1 ++ include2)
-countTypeVariable t@(VariantType ts) =
-	let
-		result = map (countTypeVariable . snd) ts
-		(exclude, include) = foldr1 (\x -> \y ->
-			(nub $ fst x ++ fst y,
-			nub $ snd x ++ snd y)) result
-	in (exclude, include)
-countTypeVariable t@(ListType t') = countTypeVariable t'
-countTypeVariable t@(Mu var typ) =
-	let (exclude, include) = countTypeVariable typ
+collectTypeVariables t@(IntType) = ([],[])
+collectTypeVariables t@(BoolType) = ([],[])
+collectTypeVariables t@(DynType) = ([],[])
+collectTypeVariables t@(ForAll var typ) =
+	let (exclude, include) = collectTypeVariables typ
 	in (exclude ++ [var], include)
-countTypeVariable t = ([], [])
+collectTypeVariables t@(UnitType) = ([],[])
+collectTypeVariables t@(ProductType t1 t2) =
+	let
+		(exclude1, include1) = collectTypeVariables t1
+		(exclude2, include2) = collectTypeVariables t2
+	in (exclude1 ++ exclude2, include1 ++ include2)
+collectTypeVariables t@(TupleType ts) =
+	let
+		result = map collectTypeVariables ts
+		(exclude, include) = foldr1 (\x -> \y ->
+			(nub $ fst x ++ fst y,
+			nub $ snd x ++ snd y)) result
+	in (exclude, include)
+collectTypeVariables t@(RecordType ts) =
+	let
+		result = map (collectTypeVariables . snd) ts
+		(exclude, include) = foldr1 (\x -> \y ->
+			(nub $ fst x ++ fst y,
+			nub $ snd x ++ snd y)) result
+	in (exclude, include)
+collectTypeVariables t@(SumType t1 t2) =
+	let
+		(exclude1, include1) = collectTypeVariables t1
+		(exclude2, include2) = collectTypeVariables t2
+	in (exclude1 ++ exclude2, include1 ++ include2)
+collectTypeVariables t@(VariantType ts) =
+	let
+		result = map (collectTypeVariables . snd) ts
+		(exclude, include) = foldr1 (\x -> \y ->
+			(nub $ fst x ++ fst y,
+			nub $ snd x ++ snd y)) result
+	in (exclude, include)
+collectTypeVariables t@(ListType typ) = collectTypeVariables typ
+collectTypeVariables t@(Mu var typ) =
+	let (exclude, include) = collectTypeVariables typ
+	in (exclude ++ [var], include)
 
 -- Given a list of variable names, build forall quantifiers
 buildForAll :: Type -> [String] -> Type
@@ -435,6 +448,25 @@ buildForAll t [] = t
 buildForAll t vars =
 	ForAll (head vars) $ buildForAll t $ tail vars
 
+-- collect bound variables
+collectBoundTypes :: Type -> [String]
+collectBoundTypes (ForAll var typ) = var : collectBoundTypes typ
+collectBoundTypes _ = []
+
+-- remove for all quantifiers
+removeQuantifiers :: Type -> Type
+removeQuantifiers (ForAll _ typ) = removeQuantifiers typ
+removeQuantifiers typ = typ
+
 -- build new type variable
 newTypeVar :: Int -> Type
 newTypeVar index = VarType ("t" ++ show index)
+
+fst3 :: (a, b, c) -> a
+fst3 (a, _, _) = a
+
+snd3 :: (a, b, c) -> b
+snd3 (_, b, _) = b
+
+trd3 :: (a, b, c) -> c
+trd3 (_, _, c) = c

@@ -44,17 +44,12 @@ typeInference expr = do
 	-- retrieve gradual types and substitutions
 	let (gtypes, substitutions) = cu
 	-- filter gradual type variables
-	let gtypes' = nub $ concat $ map
-		(\x -> let
-			-- get list of type variables
-			(exclude, include) = countTypeVariable x
-			in map (VarType) $ (nub include) \\ exclude)
-		gtypes
+	let gtypes' = nub $ concat $ map (\x -> map (VarType) $ freeVariables x) gtypes
 	-- add substitutions from types present in gtypes to dynamic type
 	let substitutions' = (map (\x -> (x, DynType)) gtypes') ++ substitutions
 	-- replace unconstrained type variables by type parameters
 	-- discover final type by applying all substitutions to expression type t
-	let finalType = generalizeTypeVariables $ foldr substituteType typ substitutions'
+	let finalType = foldr substituteType typ substitutions'
 	-- replace unconstrained type variables by type parameters
 	-- discover final types by applying all substitutions to each type ascription and type information in the expression
 	let typedExpr = substituteTypedExpression substitutions' expr_typed
