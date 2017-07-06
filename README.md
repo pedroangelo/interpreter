@@ -1,4 +1,4 @@
-# gradualizer
+# interpreter
 Interpreter for a gradually typed functional language.
 
 ### Load interpreter module
