@@ -5,75 +5,75 @@ import Types
 
 -- Expressions in λ-calculus and extensions
 data Expression
-	-- Pure λ-calculus terms
-	= Variable Var
-	| Abstraction Var Expression
-	| Application Expression Expression
-	-- Ascribed terms
-	| Ascription Expression Type
-	-- Annotated abstractions
-	| Annotation Var Type Expression
-	-- Integers
-	| Int Int
-	-- Booleans
-	| Bool Bool
-	-- Let bindings
-	| Let Var Expression Expression
-	-- Fixed point
-	| Fix Expression
-	-- Recursive let bindings
-	| LetRec Var Expression Expression
-	-- Conditional statements
-	| If Expression Expression Expression
-	-- Arithmetic operators
-	| Addition Expression Expression
-	| Subtraction Expression Expression
-	| Multiplication Expression Expression
-	| Division Expression Expression
-	-- Relational operators
-	| Equal Expression Expression
-	| NotEqual Expression Expression
-	| LesserThan Expression Expression
-	| GreaterThan Expression Expression
-	| LesserEqualTo Expression Expression
-	| GreaterEqualTo Expression Expression
-	-- Unit
-	| Unit
-	-- Pairs
-	| Pair Expression Expression
-	| First Expression
-	| Second Expression
-	-- Tuples
-	| Tuple [Expression]
-	| ProjectionTuple Int Expression Type
-	-- Records
-	| Record Records
-	| ProjectionRecord Label Expression Type
-	-- Sums
-	| Case Expression (Var, Expression) (Var, Expression)
-	| LeftTag Expression Type
-	| RightTag Expression Type
-	-- Variants
-	| CaseVariant Expression Alternatives
-	| Tag Label Expression Type
-	-- Lists
-	| Nil Type
-	| Cons Type Expression Expression
-	| IsNil Type Expression
-	| Head Type Expression
-	| Tail Type Expression
-	-- Recursive types
-	| Fold Type Expression
-	| Unfold Type Expression
-	-- Type annotations
-	| TypeInformation Type Expression
-	-- Casts
-	| Cast Type Type Expression
-	-- Blames
-	| Blame Type Message
-	-- Errors
-	| Error Message
-	deriving (Show, Eq)
+    -- Pure λ-calculus terms
+    = Variable Var
+    | Abstraction Var Expression
+    | Application Expression Expression
+    -- Ascribed terms
+    | Ascription Expression Type
+    -- Annotated abstractions
+    | Annotation Var Type Expression
+    -- Integers
+    | Int Int
+    -- Booleans
+    | Bool Bool
+    -- Let bindings
+    | Let Var Expression Expression
+    -- Fixed point
+    | Fix Expression
+    -- Recursive let bindings
+    | LetRec Var Expression Expression
+    -- Conditional statements
+    | If Expression Expression Expression
+    -- Arithmetic operators
+    | Addition Expression Expression
+    | Subtraction Expression Expression
+    | Multiplication Expression Expression
+    | Division Expression Expression
+    -- Relational operators
+    | Equal Expression Expression
+    | NotEqual Expression Expression
+    | LesserThan Expression Expression
+    | GreaterThan Expression Expression
+    | LesserEqualTo Expression Expression
+    | GreaterEqualTo Expression Expression
+    -- Unit
+    | Unit
+    -- Pairs
+    | Pair Expression Expression
+    | First Expression
+    | Second Expression
+    -- Tuples
+    | Tuple [Expression]
+    | ProjectionTuple Int Expression Type
+    -- Records
+    | Record Records
+    | ProjectionRecord Label Expression Type
+    -- Sums
+    | Case Expression (Var, Expression) (Var, Expression)
+    | LeftTag Expression Type
+    | RightTag Expression Type
+    -- Variants
+    | CaseVariant Expression Alternatives
+    | Tag Label Expression Type
+    -- Lists
+    | Nil Type
+    | Cons Type Expression Expression
+    | IsNil Type Expression
+    | Head Type Expression
+    | Tail Type Expression
+    -- Recursive types
+    | Fold Type Expression
+    | Unfold Type Expression
+    -- Type annotations
+    | TypeInformation Type Expression
+    -- Casts
+    | Cast Type Type Expression
+    -- Blames
+    | Blame Type Message
+    -- Errors
+    | Error Message
+    deriving (Show, Eq)
 
 type Alternatives = [Alternative]
 type Alternative = (Label, Var, Expression)
@@ -89,17 +89,17 @@ mapExpression :: (Expression -> Expression) -> Expression -> Expression
 -- Pure λ-calculus terms
 mapExpression f e@(Variable var) = f e
 mapExpression f e@(Abstraction var expr) =
-	f (Abstraction var $ mapExpression f expr)
+    f (Abstraction var $ mapExpression f expr)
 mapExpression f e@(Application expr1 expr2) =
-	f (Application (mapExpression f expr1) (mapExpression f expr2))
+    f (Application (mapExpression f expr1) (mapExpression f expr2))
 
 -- Ascribed terms
 mapExpression f e@(Ascription expr typ) =
-	f (Ascription (mapExpression f expr) typ)
+    f (Ascription (mapExpression f expr) typ)
 
 -- Annotated abstractions
 mapExpression f e@(Annotation var typ expr) =
-	f (Annotation var typ (mapExpression f expr))
+    f (Annotation var typ (mapExpression f expr))
 
 -- Integers
 mapExpression f e@(Int int) = f e
@@ -109,104 +109,104 @@ mapExpression f e@(Bool bool) = f e
 
 -- Let bindings
 mapExpression f e@(Let var expr1 expr2) =
-	f (Let var (mapExpression f expr1) (mapExpression f expr2))
+    f (Let var (mapExpression f expr1) (mapExpression f expr2))
 
 -- Fixed point
 mapExpression f e@(Fix expr) = f (Fix (mapExpression f expr))
 
 -- Recursive let bindings
 mapExpression f e@(LetRec var expr1 expr2) =
-	f (LetRec var (mapExpression f expr1) (mapExpression f expr2))
+    f (LetRec var (mapExpression f expr1) (mapExpression f expr2))
 
 -- Conditional statements
 mapExpression f e@(If expr1 expr2 expr3) =
-	f (If (mapExpression f expr1) (mapExpression f expr2) (mapExpression f expr3))
+    f (If (mapExpression f expr1) (mapExpression f expr2) (mapExpression f expr3))
 
 -- Arithmetic operators
 mapExpression f e@(Addition expr1 expr2) =
-	f (Addition (mapExpression f expr1) (mapExpression f expr2))
+    f (Addition (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(Subtraction expr1 expr2) =
-	f (Subtraction (mapExpression f expr1) (mapExpression f expr2))
+    f (Subtraction (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(Multiplication expr1 expr2) =
-	f (Multiplication (mapExpression f expr1) (mapExpression f expr2))
+    f (Multiplication (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(Division expr1 expr2) =
-	f (Division (mapExpression f expr1) (mapExpression f expr2))
+    f (Division (mapExpression f expr1) (mapExpression f expr2))
 
 -- Relational operators
 mapExpression f e@(Equal expr1 expr2) =
-	f (Equal (mapExpression f expr1) (mapExpression f expr2))
+    f (Equal (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(NotEqual expr1 expr2) =
-	f (NotEqual (mapExpression f expr1) (mapExpression f expr2))
+    f (NotEqual (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(LesserThan expr1 expr2) =
-	f (LesserThan (mapExpression f expr1) (mapExpression f expr2))
+    f (LesserThan (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(GreaterThan expr1 expr2) =
-	f (GreaterThan (mapExpression f expr1) (mapExpression f expr2))
+    f (GreaterThan (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(LesserEqualTo expr1 expr2) =
-	f (LesserEqualTo (mapExpression f expr1) (mapExpression f expr2))
+    f (LesserEqualTo (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(GreaterEqualTo expr1 expr2) =
-	f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
+    f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
 
 -- Unit
 mapExpression f e@(Unit) = f e
 
 -- Pairs
 mapExpression f e@(Pair expr1 expr2) =
-	f (Pair (mapExpression f expr1) (mapExpression f expr2))
+    f (Pair (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(First expr) =
-	f (First (mapExpression f expr))
+    f (First (mapExpression f expr))
 mapExpression f e@(Second expr) =
-	f (Second (mapExpression f expr))
+    f (Second (mapExpression f expr))
 
 -- Tuples
 mapExpression f e@(Tuple exprs) =
-	f (Tuple (map (mapExpression f) exprs))
+    f (Tuple (map (mapExpression f) exprs))
 mapExpression f e@(ProjectionTuple index expr typ) =
-	f (ProjectionTuple index (mapExpression f expr) typ)
+    f (ProjectionTuple index (mapExpression f expr) typ)
 
 -- Records
 mapExpression f e@(Record records) =
-	f (Record (map (\x -> (fst x, mapExpression f (snd x))) records))
+    f (Record (map (\x -> (fst x, mapExpression f (snd x))) records))
 mapExpression f e@(ProjectionRecord label expr typ) =
-	f (ProjectionRecord label (mapExpression f expr) typ)
+    f (ProjectionRecord label (mapExpression f expr) typ)
 
 -- Sums
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) =
-	f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
+    f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) =
-	f (LeftTag (mapExpression f expr) typ)
+    f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) =
-	f (RightTag (mapExpression f expr) typ)
+    f (RightTag (mapExpression f expr) typ)
 
 -- Variants
 mapExpression f e@(CaseVariant expr alternatives) =
-	f (CaseVariant (mapExpression f expr) (map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
+    f (CaseVariant (mapExpression f expr) (map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
 mapExpression f e@(Tag label expr typ) =
-	f (Tag label (mapExpression f expr) typ)
+    f (Tag label (mapExpression f expr) typ)
 
 -- Lists
 mapExpression f e@(Nil typ) = f e
 mapExpression f e@(Cons typ expr1 expr2) =
-	f (Cons typ (mapExpression f expr1) (mapExpression f expr2))
+    f (Cons typ (mapExpression f expr1) (mapExpression f expr2))
 mapExpression f e@(IsNil typ expr) =
-	f (IsNil typ (mapExpression f expr))
+    f (IsNil typ (mapExpression f expr))
 mapExpression f e@(Head typ expr) =
-	f (Head typ (mapExpression f expr))
+    f (Head typ (mapExpression f expr))
 mapExpression f e@(Tail typ expr) =
-	f (Tail typ (mapExpression f expr))
+    f (Tail typ (mapExpression f expr))
 
 -- Recursive types
 mapExpression f e@(Fold typ expr) =
-	f (Fold typ (mapExpression f expr))
+    f (Fold typ (mapExpression f expr))
 mapExpression f e@(Unfold typ expr) =
-	f (Unfold typ (mapExpression f expr))
+    f (Unfold typ (mapExpression f expr))
 
 -- Type annotations
 mapExpression f e@(TypeInformation typ expr) =
-	f (TypeInformation typ (mapExpression f expr))
+    f (TypeInformation typ (mapExpression f expr))
 
 -- Casts
 mapExpression f e@(Cast type1 type2 expr) =
-	f (Cast type1 type2 (mapExpression f expr))
+    f (Cast type1 type2 (mapExpression f expr))
 
 -- Blames
 mapExpression f e@(Blame typ label) = f e
@@ -444,22 +444,22 @@ isError _ = False
 -- check if it's a value
 isValue :: Expression -> Bool
 isValue e =
-	isVariable e ||
-	isAbstraction e ||
-	isBool e ||
-	isInt e ||
-	isUnit e ||
-	(isPair e && isValuePair e) ||
-	(isTuple e && isValueTuple e) ||
-	(isRecord e && isValueRecord e) ||
-	((isLeftTag e || isRightTag e) && isValueSums e) ||
-	(isTag e && isValueVariants e) ||
-	(isNil e) ||
-	(isCons e && isValueCons e) ||
-	isFold e ||
-	isValueCast e ||
-	isBlame e ||
-	isError e
+    isVariable e ||
+    isAbstraction e ||
+    isBool e ||
+    isInt e ||
+    isUnit e ||
+    (isPair e && isValuePair e) ||
+    (isTuple e && isValueTuple e) ||
+    (isRecord e && isValueRecord e) ||
+    ((isLeftTag e || isRightTag e) && isValueSums e) ||
+    (isTag e && isValueVariants e) ||
+    (isNil e) ||
+    (isCons e && isValueCons e) ||
+    isFold e ||
+    isValueCast e ||
+    isBlame e ||
+    isError e
 
 -- check if pair is a value
 isValuePair :: Expression -> Bool
@@ -495,16 +495,16 @@ isValueCons _ = False
 -- check if cast is a value
 isValueCast :: Expression -> Bool
 isValueCast (Cast t1 t2 e) =
-	(isGroundType t1 && isDynType t2 && isValue e) ||
-	(isArrowType t1 && isArrowType t2 && isValue e && t1 /= t2) ||
-	(isProductType t1 && isProductType t2 && isValue e && t1 /= t2) ||
-	(isTupleType t1 && isTupleType t2 && isValue e && t1 /= t2) ||
-	(isRecordType t1 && isRecordType t2 && isValue e && t1 /= t2) ||
-	(isSumType t1 && isSumType t2 && isValue e && t1 /= t2) ||
-	(isVariantType t1 && isVariantType t2 && isValue e && t1 /= t2) ||
-	(isListType t1 && isListType t2 && isValue e && t1 /= t2) ||
-	(isForAllType t1 && isForAllType t2 && isValue e && t1 /= t2) ||
-	(isMuType t1 && isMuType t2 && isValue e && t1 /= t2)
+    (isGroundType t1 && isDynType t2 && isValue e) ||
+    (isArrowType t1 && isArrowType t2 && isValue e && t1 /= t2) ||
+    (isProductType t1 && isProductType t2 && isValue e && t1 /= t2) ||
+    (isTupleType t1 && isTupleType t2 && isValue e && t1 /= t2) ||
+    (isRecordType t1 && isRecordType t2 && isValue e && t1 /= t2) ||
+    (isSumType t1 && isSumType t2 && isValue e && t1 /= t2) ||
+    (isVariantType t1 && isVariantType t2 && isValue e && t1 /= t2) ||
+    (isListType t1 && isListType t2 && isValue e && t1 /= t2) ||
+    (isForAllType t1 && isForAllType t2 && isValue e && t1 /= t2) ||
+    (isMuType t1 && isMuType t2 && isValue e && t1 /= t2)
 isValueCast _ = False
 
 -- check if it's an arithmetic operator
@@ -559,28 +559,28 @@ substitute :: ExpressionSubstitution -> Expression -> Expression
 
 -- Pure λ-calculus terms
 substitute s@(old, new) e@(Variable var)
-	-- if var equals old, replace variable with new expression
-	| var == old = new
-	-- otherwise, do nothing
-	| otherwise = e
+    -- if var equals old, replace variable with new expression
+    | var == old = new
+    -- otherwise, do nothing
+    | otherwise = e
 substitute s@(old, new) e@(Abstraction var expr)
-	-- if some abstraction has already binded the variable, don't propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Abstraction var $ substitute s expr
+    -- if some abstraction has already binded the variable, don't propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = Abstraction var $ substitute s expr
 substitute s@(old, new) e@(Application expr1 expr2) =
-	Application (substitute s expr1) (substitute s expr2)
+    Application (substitute s expr1) (substitute s expr2)
 
 -- Ascribed terms
 substitute s@(old, new) e@(Ascription expr typ) =
-	Ascription (substitute s expr) typ
+    Ascription (substitute s expr) typ
 
 -- Annotated abstractions
 substitute s@(old, new) e@(Annotation var typ expr)
-	-- if some abstraction has already binded the variable, don't propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Annotation var typ $ substitute s expr
+    -- if some abstraction has already binded the variable, don't propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = Annotation var typ $ substitute s expr
 
 -- Integers
 substitute s@(old, new) e@(Bool _) = e
@@ -590,110 +590,110 @@ substitute s@(old, new) e@(Int _) = e
 
 -- Let bindings
 substitute s@(old, new) e@(Let var expr1 expr2)
-	-- if let has already binded the variable, dont propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Let var (substitute s expr1) (substitute s expr2)
+    -- if let has already binded the variable, dont propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = Let var (substitute s expr1) (substitute s expr2)
 
 -- Fixed point
 substitute s@(old, new) e@(Fix expr) = Fix $ substitute s expr
 
 -- Recursive let bindings
 substitute s@(old, new) e@(LetRec var expr1 expr2)
-	-- if let has already binded the variable, dont propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = LetRec var (substitute s expr1) (substitute s expr2)
+    -- if let has already binded the variable, dont propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = LetRec var (substitute s expr1) (substitute s expr2)
 
 -- Conditional statements
 substitute s@(old, new) e@(If expr1 expr2 expr3) =
-	If (substitute s expr1) (substitute s expr2) (substitute s expr3)
+    If (substitute s expr1) (substitute s expr2) (substitute s expr3)
 
 -- Arithmetic operators
 substitute s@(old, new) e@(Addition expr1 expr2) =
-	Addition (substitute s expr1) (substitute s expr2)
+    Addition (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Subtraction expr1 expr2) =
-	Subtraction (substitute s expr1) (substitute s expr2)
+    Subtraction (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Multiplication expr1 expr2) =
-	Multiplication (substitute s expr1) (substitute s expr2)
+    Multiplication (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Division expr1 expr2) =
-	Division (substitute s expr1) (substitute s expr2)
+    Division (substitute s expr1) (substitute s expr2)
 
 -- Relational operators
 substitute s@(old, new) e@(Equal expr1 expr2) =
-	Equal (substitute s expr1) (substitute s expr2)
+    Equal (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(NotEqual expr1 expr2) =
-	NotEqual (substitute s expr1) (substitute s expr2)
+    NotEqual (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(LesserThan expr1 expr2) =
-	LesserThan (substitute s expr1) (substitute s expr2)
+    LesserThan (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(GreaterThan expr1 expr2) =
-	GreaterThan (substitute s expr1) (substitute s expr2)
+    GreaterThan (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(LesserEqualTo expr1 expr2) =
-	LesserEqualTo (substitute s expr1) (substitute s expr2)
+    LesserEqualTo (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
-	GreaterEqualTo (substitute s expr1) (substitute s expr2)
+    GreaterEqualTo (substitute s expr1) (substitute s expr2)
 
 -- Unit
 substitute s@(old, new) e@(Unit) = e
 
 -- Pairs
 substitute s@(old, new) e@(Pair expr1 expr2) =
-	Pair (substitute s expr1) (substitute s expr2)
+    Pair (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(First expr) =
-	First (substitute s expr)
+    First (substitute s expr)
 substitute s@(old, new) e@(Second expr) =
-	Second (substitute s expr)
+    Second (substitute s expr)
 
 -- Tuples
 substitute s@(old, new) e@(Tuple exprs) =
-	Tuple (map (substitute s) exprs)
+    Tuple (map (substitute s) exprs)
 substitute s@(old, new) e@(ProjectionTuple index expr typ) =
-	ProjectionTuple index (substitute s expr) typ
+    ProjectionTuple index (substitute s expr) typ
 
 -- Records
 substitute s@(old, new) e@(Record records) =
-	Record (map (substituteRecord s) records)
+    Record (map (substituteRecord s) records)
 substitute s@(old, new) e@(ProjectionRecord label expr typ) =
-	ProjectionRecord label (substitute s expr) typ
+    ProjectionRecord label (substitute s expr) typ
 
 -- Sums
 substitute s@(old, new) e@(Case expr e1@(var1, expr1) e2@(var2, expr2)) =
-	Case (substitute s expr) (substituteCase s e1) (substituteCase s e2)
+    Case (substitute s expr) (substituteCase s e1) (substituteCase s e2)
 substitute s@(old, new) e@(LeftTag expr typ) =
-	LeftTag (substitute s expr) typ
+    LeftTag (substitute s expr) typ
 substitute s@(old, new) e@(RightTag expr typ) =
-	RightTag (substitute s expr) typ
+    RightTag (substitute s expr) typ
 
 -- Variants
 substitute s@(old, new) e@(CaseVariant expr alternatives) =
-	CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
+    CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
 substitute s@(old, new) e@(Tag label expr typ) =
-	Tag label (substitute s expr) typ
+    Tag label (substitute s expr) typ
 
 -- Lists
 substitute s@(old, new) e@(Nil _) = e
 substitute s@(old, new) e@(Cons typ expr1 expr2) =
-	Cons typ (substitute s expr1) (substitute s expr2)
+    Cons typ (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(IsNil typ expr) =
-	IsNil typ (substitute s expr)
+    IsNil typ (substitute s expr)
 substitute s@(old, new) e@(Head typ expr) =
-	Head typ (substitute s expr)
+    Head typ (substitute s expr)
 substitute s@(old, new) e@(Tail typ expr) =
-	Tail typ (substitute s expr)
+    Tail typ (substitute s expr)
 
 -- Recursive types
 substitute s@(old, new) e@(Fold typ expr) =
-	Fold typ (substitute s expr)
+    Fold typ (substitute s expr)
 substitute s@(old, new) e@(Unfold typ expr) =
-	Unfold typ (substitute s expr)
+    Unfold typ (substitute s expr)
 
 -- Type annotation
 substitute s@(old, new) e@(TypeInformation typ expr) =
-	TypeInformation typ $ substitute s expr
+    TypeInformation typ $ substitute s expr
 
 -- Casts
 substitute s@(old, new) e@(Cast t1 t2 expr) =
-	Cast t1 t2 $ substitute s expr
+    Cast t1 t2 $ substitute s expr
 
 -- Blames
 substitute s@(old, new) e@(Blame t1 label) = e
@@ -704,19 +704,19 @@ substitute s@(old, new) e@(Error msg) = e
 -- substitution for case expressions
 substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Expression)
 substituteCase s@(old, new) e@(var, expr)
-	| old == var = e
-	| otherwise = (var, substitute s expr)
+    | old == var = e
+    | otherwise = (var, substitute s expr)
 
 -- substitution for variant case expressions
 substituteCaseVariant :: ExpressionSubstitution -> Alternative -> Alternative
 substituteCaseVariant s@(old, new) e@(label, var, expr)
-	| old == var = e
-	| otherwise = (label, var, substitute s expr)
+    | old == var = e
+    | otherwise = (label, var, substitute s expr)
 
 -- substitution for records
 substituteRecord :: ExpressionSubstitution -> Record -> Record
 substituteRecord s@(old, new) e@(label, expr) =
-	(label, substitute s expr)
+    (label, substitute s expr)
 
 -- substitute types in annotations and type information in all terms
 -- using the substitutions generated during constraint unification
@@ -727,9 +727,9 @@ substituteTypedExpression s = mapExpression (substituteTypedExpression' s)
 -- using the substitutions generated during constraint unification
 substituteTypedExpression' :: TypeSubstitutions -> Expression -> Expression
 substituteTypedExpression' s (Ascription expr typ) =
-	Ascription expr (foldr substituteType typ s)
+    Ascription expr (foldr substituteType typ s)
 substituteTypedExpression' s (TypeInformation typ expr) =
-	TypeInformation (foldr substituteType typ s) expr
+    TypeInformation (foldr substituteType typ s) expr
 substituteTypedExpression' s e = e
 
 -- HELPER FUNCTIONS

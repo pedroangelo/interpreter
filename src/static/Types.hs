@@ -10,24 +10,24 @@ type Bindings = (Var, Type)
 
 -- Types in λ-calculus and extensions
 data Type
-	= VarType Var
-	| ArrowType Type Type
-	| IntType
-	| BoolType
-	| ForAll Var Type
-	| UnitType
-	| ProductType Type Type
-	| RecordType [(Label, Type)]
-	| SumType Type Type
-	| VariantType [(Label, Type)]
-	| Mu Var Type
-	deriving (Show, Eq)
+    = VarType Var
+    | ArrowType Type Type
+    | IntType
+    | BoolType
+    | ForAll Var Type
+    | UnitType
+    | ProductType Type Type
+    | RecordType [(Label, Type)]
+    | SumType Type Type
+    | VariantType [(Label, Type)]
+    | Mu Var Type
+    deriving (Show, Eq)
 
 -- Constraints
 type Constraints = [Constraint]
 data Constraint
-	= Equality Type Type
-	deriving (Show, Eq)
+    = Equality Type Type
+    deriving (Show, Eq)
 
 type Label = String
 type Var = String
@@ -108,15 +108,15 @@ isMuType _ = False
 -- compare labels of variant types
 compareLabels :: Type -> Type -> Bool
 compareLabels t1@(RecordType list1) t2@(RecordType list2) =
-	let
-		(labels1, _) = fromRecordType t1
-		(labels2, _) = fromRecordType t2
-	in labels1 == labels2
+    let
+        (labels1, _) = fromRecordType t1
+        (labels2, _) = fromRecordType t2
+    in labels1 == labels2
 compareLabels t1@(VariantType list1) t2@(VariantType list2) =
-	let
-		(labels1, _) = fromVariantType t1
-		(labels2, _) = fromVariantType t2
-	in labels1 == labels2
+    let
+        (labels1, _) = fromVariantType t1
+        (labels2, _) = fromVariantType t2
+    in labels1 == labels2
 compareLabels _ _ = False
 
 -- PROJECTIONS
@@ -136,107 +136,107 @@ type TypeSubstitution = (Type, Type)
 -- subsitute type
 substituteType :: TypeSubstitution -> Type -> Type
 substituteType s@(old, new) t@(VarType var)
-	| old == t = new
-	| otherwise = t
+    | old == t = new
+    | otherwise = t
 substituteType s@(old, new) t@(ArrowType t1 t2) =
-	ArrowType (substituteType s t1) (substituteType s t2)
+    ArrowType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(IntType) = t
 substituteType s@(old, new) t@(BoolType) = t
 substituteType s@(old, new) t@(UnitType) = t
 substituteType s@(old, new) t@(ProductType t1 t2) =
-	ProductType (substituteType s t1) (substituteType s t2)
+    ProductType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(RecordType ts) =
-	RecordType $ map (\x -> (fst x, substituteType s $ snd x)) ts
+    RecordType $ map (\x -> (fst x, substituteType s $ snd x)) ts
 substituteType s@(old, new) t@(SumType t1 t2) =
-	SumType (substituteType s t1) (substituteType s t2)
+    SumType (substituteType s t1) (substituteType s t2)
 substituteType s@(old, new) t@(VariantType ts) =
-	VariantType $ map (\x -> (fst x, substituteType s $ snd x)) ts
+    VariantType $ map (\x -> (fst x, substituteType s $ snd x)) ts
 substituteType s@(old, new) t@(Mu var typ)
-	| isVarType old && var == var' = t
-	| otherwise = Mu var $ substituteType s typ
-	where (VarType var') = old
+    | isVarType old && var == var' = t
+    | otherwise = Mu var $ substituteType s typ
+    where (VarType var') = old
 
 unfoldType :: (String, Type) -> Type -> Type
 unfoldType s@(old, new) t@(VarType var)
-	| old == var = new
-	| otherwise = t
+    | old == var = new
+    | otherwise = t
 unfoldType s@(old, new) t@(ArrowType t1 t2) =
-	ArrowType (unfoldType s t1) (unfoldType s t2)
+    ArrowType (unfoldType s t1) (unfoldType s t2)
 unfoldType s@(old, new) t@(IntType) = t
 unfoldType s@(old, new) t@(BoolType) = t
 unfoldType s@(old, new) t@(UnitType) = t
 unfoldType s@(old, new) t@(ProductType t1 t2) =
-	ProductType (unfoldType s t1) (unfoldType s t2)
+    ProductType (unfoldType s t1) (unfoldType s t2)
 unfoldType s@(old, new) t@(RecordType ts) =
-	RecordType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
+    RecordType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
 unfoldType s@(old, new) t@(SumType t1 t2) =
-	SumType (unfoldType s t1) (unfoldType s t2)
+    SumType (unfoldType s t1) (unfoldType s t2)
 unfoldType s@(old, new) t@(VariantType ts) =
-	VariantType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
+    VariantType $ map (\x -> (fst x, unfoldType s $ snd x)) ts
 unfoldType s@(old, new) t@(Mu var typ)
-	| old == var = unfoldType s typ
-	| otherwise = t
+    | old == var = unfoldType s typ
+    | otherwise = t
 
 -- apply substitution to constraints
 substituteConstraint :: TypeSubstitution -> Constraint -> Constraint
 substituteConstraint s (Equality t1 t2) =
-	Equality (substituteType s t1) (substituteType s t2)
+    Equality (substituteType s t1) (substituteType s t2)
 
 -- HELPER FUNCTIONS
 
 -- Bind type variables with ForAll quantifiers
 generalizeTypeVariables :: Type -> Type
 generalizeTypeVariables t =
-	let
-		-- get list of type variables
-		(exclude, include) = countTypeVariable t
-		vars = (nub include) \\ exclude
-	-- insert forall quantifiers
-	in buildForAll t vars
+    let
+        -- get list of type variables
+        (exclude, include) = countTypeVariable t
+        vars = (nub include) \\ exclude
+    -- insert forall quantifiers
+    in buildForAll t vars
 
 -- Collect type variables into a list
 countTypeVariable :: Type -> ([String], [String])
 countTypeVariable t@(VarType var) = ([] , [var])
 countTypeVariable t@(ArrowType t1 t2) =
-	let
-		(exclude1, include1) = countTypeVariable t1
-		(exclude2, include2) = countTypeVariable t2
-	in (exclude1 ++ exclude2, include1 ++ include2)
+    let
+        (exclude1, include1) = countTypeVariable t1
+        (exclude2, include2) = countTypeVariable t2
+    in (exclude1 ++ exclude2, include1 ++ include2)
 countTypeVariable t@(ForAll var t') = countTypeVariable t'
 countTypeVariable t@(ProductType t1 t2) =
-	let
-		(exclude1, include1) = countTypeVariable t1
-		(exclude2, include2) = countTypeVariable t2
-	in (exclude1 ++ exclude2, include1 ++ include2)
+    let
+        (exclude1, include1) = countTypeVariable t1
+        (exclude2, include2) = countTypeVariable t2
+    in (exclude1 ++ exclude2, include1 ++ include2)
 countTypeVariable t@(RecordType ts) =
-	let
-		result = map (countTypeVariable . snd) ts
-		(exclude, include) = foldr1 (\x -> \y ->
-			(nub $ fst x ++ fst y,
-			nub $ snd x ++ snd y)) result
-	in (exclude, include)
+    let
+        result = map (countTypeVariable . snd) ts
+        (exclude, include) = foldr1 (\x -> \y ->
+            (nub $ fst x ++ fst y,
+            nub $ snd x ++ snd y)) result
+    in (exclude, include)
 countTypeVariable t@(SumType t1 t2) =
-	let
-		(exclude1, include1) = countTypeVariable t1
-		(exclude2, include2) = countTypeVariable t2
-	in (exclude1 ++ exclude2, include1 ++ include2)
+    let
+        (exclude1, include1) = countTypeVariable t1
+        (exclude2, include2) = countTypeVariable t2
+    in (exclude1 ++ exclude2, include1 ++ include2)
 countTypeVariable t@(VariantType ts) =
-	let
-		result = map (countTypeVariable . snd) ts
-		(exclude, include) = foldr1 (\x -> \y ->
-			(nub $ fst x ++ fst y,
-			nub $ snd x ++ snd y)) result
-	in (exclude, include)
+    let
+        result = map (countTypeVariable . snd) ts
+        (exclude, include) = foldr1 (\x -> \y ->
+            (nub $ fst x ++ fst y,
+            nub $ snd x ++ snd y)) result
+    in (exclude, include)
 countTypeVariable t@(Mu var typ) =
-	let (exclude, include) = countTypeVariable typ
-	in (exclude ++ [var], include)
+    let (exclude, include) = countTypeVariable typ
+    in (exclude ++ [var], include)
 countTypeVariable t = ([], [])
 
 -- Given a list of variable names, build forall quantifiers
 buildForAll :: Type -> [String] -> Type
 buildForAll t [] = t
 buildForAll t vars =
-	ForAll (head vars) $ buildForAll t $ tail vars
+    ForAll (head vars) $ buildForAll t $ tail vars
 
 -- build new type variable
 newTypeVar :: Int -> Type

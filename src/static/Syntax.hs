@@ -5,58 +5,58 @@ import Types
 
 -- Expressions in λ-calculus and extensions
 data Expression
-	-- pure λ-calculus terms
-	= Variable Var
-	| Abstraction Var Expression
-	| Application Expression Expression
-	-- Ascribed terms
-	| Ascription Expression Type
-	-- Annotated Abstraction
-	| Annotation Var Type Expression
-	-- Integers
-	| Int Int
-	-- Booleans
-	| Bool Bool
-	-- Let bindings
-	| Let Var Expression Expression
-	-- Fixed point
-	| Fix Expression
-	-- Recursive let binding
-	| LetRec Var Expression Expression
-	-- Conditional statement
-	| If Expression Expression Expression
-	-- Arithmetic Operators
-	| Addition Expression Expression
-	| Subtraction Expression Expression
-	| Multiplication Expression Expression
-	| Division Expression Expression
-	-- Relational Operators
-	| Equal Expression Expression
-	| NotEqual Expression Expression
-	| LesserThan Expression Expression
-	| GreaterThan Expression Expression
-	| LesserEqualTo Expression Expression
-	| GreaterEqualTo Expression Expression
-	-- Unit
-	| Unit
-	-- Pairs
-	| Pair Expression Expression
-	| First Expression
-	| Second Expression
-	-- Records
-	| Record Records
-	| Projection Label Expression Type
-	-- Sums
-	| Case Expression (Var, Expression) (Var, Expression)
-	| LeftTag Expression Type
-	| RightTag Expression Type
-	-- Variants
-	| CaseVariant Expression Alternatives
-	| Tag Label Expression Type
-	-- Recursive Types
-	| Fold Type Expression
-	| Unfold Type Expression
-	deriving (Show, Eq)
+    -- pure λ-calculus terms
+    = Variable Var
+    | Abstraction Var Expression
+    | Application Expression Expression
+    -- Ascribed terms
+    | Ascription Expression Type
+    -- Annotated Abstraction
+    | Annotation Var Type Expression
+    -- Integers
+    | Int Int
+    -- Booleans
+    | Bool Bool
+    -- Let bindings
+    | Let Var Expression Expression
+    -- Fixed point
+    | Fix Expression
+    -- Recursive let binding
+    | LetRec Var Expression Expression
+    -- Conditional statement
+    | If Expression Expression Expression
+    -- Arithmetic Operators
+    | Addition Expression Expression
+    | Subtraction Expression Expression
+    | Multiplication Expression Expression
+    | Division Expression Expression
+    -- Relational Operators
+    | Equal Expression Expression
+    | NotEqual Expression Expression
+    | LesserThan Expression Expression
+    | GreaterThan Expression Expression
+    | LesserEqualTo Expression Expression
+    | GreaterEqualTo Expression Expression
+    -- Unit
+    | Unit
+    -- Pairs
+    | Pair Expression Expression
+    | First Expression
+    | Second Expression
+    -- Records
+    | Record Records
+    | Projection Label Expression Type
+    -- Sums
+    | Case Expression (Var, Expression) (Var, Expression)
+    | LeftTag Expression Type
+    | RightTag Expression Type
+    -- Variants
+    | CaseVariant Expression Alternatives
+    | Tag Label Expression Type
+    -- Recursive Types
+    | Fold Type Expression
+    | Unfold Type Expression
+    deriving (Show, Eq)
 
 type Alternatives = [Alternative]
 type Alternative = (Label, Var, Expression)
@@ -94,15 +94,15 @@ mapExpression f e@(Pair expr1 expr2) = f (Pair (mapExpression f expr1) (mapExpre
 mapExpression f e@(First expr) = f (First (mapExpression f expr))
 mapExpression f e@(Second expr) = f (Second (mapExpression f expr))
 mapExpression f e@(Record records) =
-	f (Record
-	(map (\x -> (fst x, mapExpression f (snd x))) records))
+    f (Record
+    (map (\x -> (fst x, mapExpression f (snd x))) records))
 mapExpression f e@(Projection label expr typ) = f (Projection label (mapExpression f expr) typ)
 mapExpression f e@(Case expr (var1, expr1) (var2, expr2)) = f (Case (mapExpression f expr) (var1, mapExpression f expr1) (var2, mapExpression f expr2))
 mapExpression f e@(LeftTag expr typ) = f (LeftTag (mapExpression f expr) typ)
 mapExpression f e@(RightTag expr typ) = f (RightTag (mapExpression f expr) typ)
 mapExpression f e@(CaseVariant expr alternatives) =
-	f (CaseVariant (mapExpression f expr)
-	(map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
+    f (CaseVariant (mapExpression f expr)
+    (map (\x -> (fst3 x, snd3 x, mapExpression f (trd3 x))) alternatives))
 mapExpression f e@(Tag label expr typ) = f (Tag label (mapExpression f expr) typ)
 mapExpression f e@(Fold typ expr) = f (Fold typ (mapExpression f expr))
 mapExpression f e@(Unfold typ expr) = f (Unfold typ (mapExpression f expr))
@@ -283,16 +283,16 @@ isUnfold _ = False
 -- check if is a value
 isValue :: Expression -> Bool
 isValue e =
-	isVariable e ||
-	isAbstraction e ||
-	isBool e ||
-	isInt e ||
-	isUnit e ||
-	(isPair e && isValuePair e) ||
-	(isRecord e && isValueRecord e) ||
-	((isLeftTag e || isRightTag e) && isValueSums e) ||
-	(isTag e && isValueVariants e) ||
-	isFold e
+    isVariable e ||
+    isAbstraction e ||
+    isBool e ||
+    isInt e ||
+    isUnit e ||
+    (isPair e && isValuePair e) ||
+    (isRecord e && isValueRecord e) ||
+    ((isLeftTag e || isRightTag e) && isValueSums e) ||
+    (isTag e && isValueVariants e) ||
+    isFold e
 
 -- check if pair is a value
 isValuePair :: Expression -> Bool
@@ -363,34 +363,34 @@ substitute :: ExpressionSubstitution -> Expression -> Expression
 
 -- if the expression is a variable
 substitute s@(old, new) e@(Variable var)
-	-- if var equals old, replace variable with new expression
-	| var == old = new
-	-- otherwise, replace nothing
-	| otherwise = e
+    -- if var equals old, replace variable with new expression
+    | var == old = new
+    -- otherwise, replace nothing
+    | otherwise = e
 
 -- if the expression is an abstraction
 substitute s@(old, new) e@(Abstraction var expr)
-	-- if some abstraction has already binded the variable, don't propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Abstraction var $ substitute s expr
+    -- if some abstraction has already binded the variable, don't propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = Abstraction var $ substitute s expr
 
 -- if the expression is an application
 substitute s@(old, new) e@(Application expr1 expr2) =
-	-- propagate substitutions
-	Application (substitute s expr1) (substitute s expr2)
+    -- propagate substitutions
+    Application (substitute s expr1) (substitute s expr2)
 
 -- if the expression is an ascription
 substitute s@(old, new) e@(Ascription expr typ) =
-	-- propagate substitutions
-	Ascription (substitute s expr) typ
+    -- propagate substitutions
+    Ascription (substitute s expr) typ
 
 -- if the expression is an annotated Abstraction
 substitute s@(old, new) e@(Annotation var typ expr)
-	-- if some abstraction has already binded the variable, don't propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Annotation var typ $ substitute s expr
+    -- if some abstraction has already binded the variable, don't propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = Annotation var typ $ substitute s expr
 
 -- if the expression is a base type such as Int or Bool, do nothing
 substitute s@(old, new) e@(Bool _) = e
@@ -398,102 +398,102 @@ substitute s@(old, new) e@(Int _) = e
 
 -- if the expression is a let binding
 substitute s@(old, new) e@(Let var expr1 expr2)
-	-- if let has already binded the variable, dont propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = Let var (substitute s expr1) (substitute s expr2)
+    -- if let has already binded the variable, dont propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = Let var (substitute s expr1) (substitute s expr2)
 
 -- if the expression is a fixed point, propagate substitutions
 substitute s@(old, new) e@(Fix expr) = Fix $ substitute s expr
 
 -- if the expression is a recursive let binding
 substitute s@(old, new) e@(LetRec var expr1 expr2)
-	-- if let has already binded the variable, dont propagate substitutions
-	| var == old = e
-	-- otherwise, propagate substitutions
-	| otherwise = LetRec var (substitute s expr1) (substitute s expr2)
+    -- if let has already binded the variable, dont propagate substitutions
+    | var == old = e
+    -- otherwise, propagate substitutions
+    | otherwise = LetRec var (substitute s expr1) (substitute s expr2)
 
 -- if the expression is a conditional statement
 substitute s@(old, new) e@(If expr1 expr2 expr3) =
-	-- propagate substitutions
-	If (substitute s expr1) (substitute s expr2) (substitute s expr3)
+    -- propagate substitutions
+    If (substitute s expr1) (substitute s expr2) (substitute s expr3)
 
 -- if expression is an arithmetic operation or comparison operator,
 -- propagate substitutions
 substitute s@(old, new) e@(Addition expr1 expr2) =
-	Addition (substitute s expr1) (substitute s expr2)
+    Addition (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Subtraction expr1 expr2) =
-	Subtraction (substitute s expr1) (substitute s expr2)
+    Subtraction (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Multiplication expr1 expr2) =
-	Multiplication (substitute s expr1) (substitute s expr2)
+    Multiplication (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Division expr1 expr2) =
-	Division (substitute s expr1) (substitute s expr2)
+    Division (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(Equal expr1 expr2) =
-	Equal (substitute s expr1) (substitute s expr2)
+    Equal (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(NotEqual expr1 expr2) =
-	NotEqual (substitute s expr1) (substitute s expr2)
+    NotEqual (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(LesserThan expr1 expr2) =
-	LesserThan (substitute s expr1) (substitute s expr2)
+    LesserThan (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(GreaterThan expr1 expr2) =
-	GreaterThan (substitute s expr1) (substitute s expr2)
+    GreaterThan (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(LesserEqualTo expr1 expr2) =
-	LesserEqualTo (substitute s expr1) (substitute s expr2)
+    LesserEqualTo (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
-	GreaterEqualTo (substitute s expr1) (substitute s expr2)
+    GreaterEqualTo (substitute s expr1) (substitute s expr2)
 
 -- if expression is an unit
 substitute s@(old, new) e@(Unit) = e
 
 -- if the expression is a pair or a projection
 substitute s@(old, new) e@(Pair expr1 expr2) =
-	Pair (substitute s expr1) (substitute s expr2)
+    Pair (substitute s expr1) (substitute s expr2)
 substitute s@(old, new) e@(First expr) =
-	First (substitute s expr)
+    First (substitute s expr)
 substitute s@(old, new) e@(Second expr) =
-	Second (substitute s expr)
+    Second (substitute s expr)
 
 -- if the expression is a record or a projection
 substitute s@(old, new) e@(Record records) =
-	Record (map (substituteRecord s) records)
+    Record (map (substituteRecord s) records)
 substitute s@(old, new) e@(Projection label expr typ) =
-	Projection label (substitute s expr) typ
+    Projection label (substitute s expr) typ
 
 -- if the expression is a case or tag
 substitute s@(old, new) e@(Case expr e1@(var1, expr1) e2@(var2, expr2)) =
-	Case (substitute s expr) (substituteCase s e1) (substituteCase s e2)
+    Case (substitute s expr) (substituteCase s e1) (substituteCase s e2)
 substitute s@(old, new) e@(LeftTag expr typ) =
-	LeftTag (substitute s expr) typ
+    LeftTag (substitute s expr) typ
 substitute s@(old, new) e@(RightTag expr typ) =
-	RightTag (substitute s expr) typ
+    RightTag (substitute s expr) typ
 
 -- if the expression is a variant case or tag
 substitute s@(old, new) e@(CaseVariant expr alternatives) =
-	CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
+    CaseVariant (substitute s expr) (map (substituteCaseVariant s) alternatives)
 substitute s@(old, new) e@(Tag label expr typ) =
-	Tag label (substitute s expr) typ
+    Tag label (substitute s expr) typ
 
 -- if the expression is a fold or unfold
 substitute s@(old, new) e@(Fold typ expr) =
-	Fold typ (substitute s expr)
+    Fold typ (substitute s expr)
 substitute s@(old, new) e@(Unfold typ expr) =
-	Unfold typ (substitute s expr)
+    Unfold typ (substitute s expr)
 
 -- substitution for case expressions
 substituteCase :: ExpressionSubstitution -> (String, Expression) -> (String, Expression)
 substituteCase s@(old, new) e@(var, expr)
-	| old == var = e
-	| otherwise = (var, substitute s expr)
+    | old == var = e
+    | otherwise = (var, substitute s expr)
 
 -- substitution for case expressions
 substituteCaseVariant :: ExpressionSubstitution -> Alternative -> Alternative
 substituteCaseVariant s@(old, new) e@(label, var, expr)
-	| old == var = e
-	| otherwise = (label, var, substitute s expr)
+    | old == var = e
+    | otherwise = (label, var, substitute s expr)
 
 -- substitution for records
 substituteRecord :: ExpressionSubstitution -> Record -> Record
 substituteRecord s@(old, new) e@(label, expr) =
-	(label, substitute s expr)
+    (label, substitute s expr)
 
 -- HELPER FUNCTIONS
 
