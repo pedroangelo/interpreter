@@ -3,38 +3,48 @@ Interpreter for a gradually typed functional language
 
 ### Instalation
 Install stack by following the guide in [Haskell Tool Stack](https://www.haskellstack.org/).
-```bash
+```
 $ wget -qO- https://get.haskellstack.org/ | sh
 ```
 Clone repository
-```bash
+```
 $ git clone git@github.com:pedroangelo/interpreter.git
 ```
 Setup stack
-```bash
+```
 $ cd interpreter/
 $ stack setup
 ```
 ### Load interpreter module
-```bash
+```
 $ cd src/
 $ stack ghci
 ```
-```haskell
+```
 > :l Gradual.Interpreter
 ```
 ### Interpret a program from the command line:
-```haskell
-*Interpreter> :t runCode
-runCode :: String -> IO ()
-*Interpreter> runCode <program>
 ```
+*Gradual.Interpreter> :t runCode
+runCode :: String -> IO ()
+*Gradual.Interpreter> runCode <program>
+```
+Example:
+```
+*Gradual.Interpreter> runCode "(\\x : Dyn . 1 + x) true"
+Expression: (\x : Dyn . 1 + x) True
 
+Expression type: Int
+
+Cast insertion: ((\x : Dyn . (1 : Int => Int) + (x : Dyn => Int)) : (Dyn -> Int) => (Dyn -> Int)) (True : Bool => Dyn)
+
+Evaluation result: Blame: cannot cast from BoolType to IntType
+```
 ### Interpret a program from a file:
-```haskell
-*Interpreter> :t runFile
+```
+*Gradual.Interpreter> :t runFile
 runFile :: FilePath -> IO ()
-*Interpreter> runFile <filename>
+*Gradual.Interpreter> runFile <filename>
 ```
 
 The syntax that the interpreter accepts is described below.
@@ -84,8 +94,11 @@ alternatives ::= | label var -> e
 list ::= e | e, list
 ```
 `var` represents a variable, which can be any string starting with a lower case alphabetic character followed by alphanumeric characters, an underscore or quotation mark.
+
 `integer` represents a positive integer (i.e. 0, 1, 2, ...).
+
 `boolean` represents a boolean value, either true or false.
+
 `label` represents a string starting with an upper case alphabetic character followed by alphanumeric characters, an underscore or quotation mark.
 
 Types
