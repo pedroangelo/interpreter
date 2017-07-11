@@ -30,13 +30,13 @@ import Text.Parsec
 
 -- run interpreter for given expression
 interpret :: Expression -> IO ()
-interpret expr = interpretCode False expr
+interpret = interpretCode False
 
 -- run interpreter for given expression
 interpretCode :: Bool -> Expression -> IO ()
 interpretCode parameter expr = do
-    let prettyE = if parameter then (\x -> show $ prettyExpression x) else show
-    let prettyT = if parameter then (\x -> show $ prettyType x ) else show
+    let prettyE = if parameter then show . prettyExpression else show
+    let prettyT = if parameter then show . prettyType else show
     -- get type of expression
     let ti = inferType expr
     -- if expression is ill typed
@@ -68,7 +68,7 @@ runCode string = do
     if isLeft parsed then do
         -- print error
         let (Left parseError) = parsed
-        putStrLn $ show parseError
+        print parseError
         return ()
     else do
         -- get expression
@@ -86,7 +86,7 @@ runFile filePath = do
     if isLeft parsed then do
         -- print error
         let (Left parseError) = parsed
-        putStrLn $ show parseError
+        print parseError
         return ()
     else do
         -- get expression

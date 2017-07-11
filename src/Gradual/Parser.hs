@@ -248,11 +248,11 @@ ifExpression = do
 unitExpression :: Parser Expression
 unitExpression = do
     { reserved "unit"
-    ; return $ Unit } <?> "unit"
+    ; return Unit } <?> "unit"
 
 -- tuple
 tupleExpression :: Parser Expression
-tupleExpression = (parens $ do
+tupleExpression = parens (do
     { e <- expression
     ; comma
     ; es <- commaSep1 expression
@@ -270,7 +270,7 @@ projectionTupleExpression = do
 
 -- record
 recordExpression :: Parser Expression
-recordExpression = (braces $ do
+recordExpression = braces (do
     { es <- commaSep1 assignment
     ; return $ Record es }) <?> "record"
 
@@ -289,7 +289,7 @@ assignment = do
     { var <- identifier
     ; reservedOp "="
     ; t <- expression
-    ; return $ (var, t) } <?> "type variable assignment"
+    ; return (var, t) } <?> "type variable assignment"
 
 -- variant case
 caseExpression :: Parser Expression
@@ -308,7 +308,7 @@ alternative = do
     ; v <- identifier
     ; reservedOp "->"
     ; e <- expression
-    ; return $ (l, v, e) } <?> "alternative"
+    ; return (l, v, e) } <?> "alternative"
 
 -- tag
 tagExpression :: Parser Expression
@@ -495,7 +495,7 @@ unitType = do
 
 -- Tuple type: (Types)
 tupleType :: Parser Type
-tupleType = (parens $ do
+tupleType = parens (do
     { t <- typ
     ; comma
     ; ts <- commaSep1 typ
@@ -503,7 +503,7 @@ tupleType = (parens $ do
 
 -- Record type: {Labels:Types}
 recordType :: Parser Type
-recordType = (braces $ do
+recordType = braces (do
     { ts <- commaSep1 (do
         { var <- identifier
         ; reservedOp ":"
@@ -513,7 +513,7 @@ recordType = (braces $ do
 
 -- Variant type: <Labels:Types>
 variantType :: Parser Type
-variantType = (angles $ do
+variantType = angles (do
     { ts <- commaSep1 (do
         { var <- label
         ; reservedOp ":"
@@ -523,7 +523,7 @@ variantType = (angles $ do
 
 -- List type: [Type]
 listType :: Parser Type
-listType = (brackets $ do
+listType = brackets (do
     { t <- typ
     ; return $ ListType t }) <?> "list type"
 

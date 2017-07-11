@@ -81,7 +81,7 @@ prettyExpression (GreaterEqualTo expr1 expr2) = hsep
     [printParensExpression expr1, text ">=", printParensExpression expr2]
 
 -- Unit
-prettyExpression (Unit) = text "unit"
+prettyExpression Unit = text "unit"
 
 -- Pairs
 prettyExpression (Pair expr1 expr2) = parens $ hcat $
@@ -125,16 +125,15 @@ prettyExpression (Tag label expr typ) = hsep
 
 
 -- Lists
-prettyExpression (Nil typ) = hsep $
-    [text "nil", brackets $ prettyType typ]
-prettyExpression (Cons typ expr1 expr2) = hcat $
+prettyExpression (Nil typ) = hsep [text "nil", brackets $ prettyType typ]
+prettyExpression (Cons typ expr1 expr2) = hcat
     [printParensExpression expr1, colon, printParensExpression expr2,
     space, text "as", space, prettyType typ]
-prettyExpression (IsNil typ expr) = hsep $
+prettyExpression (IsNil typ expr) = hsep
     [text "isnil", brackets $ prettyType typ, printParensExpression expr]
-prettyExpression (Head typ expr) = hsep $
+prettyExpression (Head typ expr) = hsep
     [text "head", brackets $ prettyType typ, printParensExpression expr]
-prettyExpression (Tail typ expr) = hsep $
+prettyExpression (Tail typ expr) = hsep
     [text "tail", brackets $ prettyType typ, printParensExpression expr]
 
 -- Recursive types
@@ -170,20 +169,20 @@ prettyType (ArrowType t1 t2) = hsep
     [printParensType t1, text "->", prettyType t2]
 
 -- Integer type: Int
-prettyType (IntType) = text "Int"
+prettyType IntType = text "Int"
 
 -- Boolean type: Bool
-prettyType (BoolType) = text "Bool"
+prettyType BoolType = text "Bool"
 
 -- Dynamic type: ?
-prettyType (DynType) = text "Dyn"
+prettyType DynType = text "Dyn"
 
 -- For all quantifier: forall Var.Type
 prettyType (ForAll var typ) = hsep
     [text "forall", text var, text ".", prettyType typ]
 
 -- Unit type: Unit
-prettyType (UnitType) = text "Unit"
+prettyType UnitType = text "Unit"
 
 -- Product type: Type × Type
 prettyType (ProductType t1 t2) = hsep
@@ -212,7 +211,7 @@ prettyType (Mu var typ) = hsep
     [text "rec", text var, dot, prettyType typ]
 
 variant :: Doc -> Doc
-variant p = enclose langle rangle p
+variant = enclose langle rangle
 
 printParensExpression :: Expression -> Doc
 printParensExpression expr = if needsParensExpression expr

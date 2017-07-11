@@ -147,7 +147,7 @@ mapExpression f e@(GreaterEqualTo expr1 expr2) =
     f (GreaterEqualTo (mapExpression f expr1) (mapExpression f expr2))
 
 -- Unit
-mapExpression f e@(Unit) = f e
+mapExpression f e@Unit = f e
 
 -- Pairs
 mapExpression f e@(Pair expr1 expr2) =
@@ -218,107 +218,107 @@ mapExpression f e@(Error msg) = f e
 
 -- check if it's a variable
 isVariable :: Expression -> Bool
-isVariable (Variable _) = True
+isVariable Variable{} = True
 isVariable _ = False
 
 -- check if it's an abstraction
 isAbstraction :: Expression -> Bool
-isAbstraction (Abstraction _ _) = True
+isAbstraction Abstraction{} = True
 isAbstraction _ = False
 
 -- check if it's an application
 isApplication :: Expression -> Bool
-isApplication (Application _ _) = True
+isApplication Application{} = True
 isApplication _ = False
 
 -- check if it's an ascription
 isAscription :: Expression -> Bool
-isAscription (Ascription _ _) = True
+isAscription Ascription{} = True
 isAscription _ = False
 
 -- check if it's an annotated abstraction
 isAnnotation :: Expression -> Bool
-isAnnotation (Annotation _ _ _) = True
+isAnnotation Annotation{} = True
 isAnnotation _ = False
 
 -- check if it's a boolean
 isBool :: Expression -> Bool
-isBool (Bool _) = True
+isBool Bool{} = True
 isBool _ = False
 
 -- check if it's an integer
 isInt :: Expression -> Bool
-isInt (Int _) = True
+isInt Int{} = True
 isInt _ = False
 
 -- check if it's a let binding
 isLet :: Expression -> Bool
-isLet (Let _ _ _) = True
+isLet Let{} = True
 isLet _ = False
 
 -- check if it's a fixed point
 isFix :: Expression -> Bool
-isFix (Fix _) = True
+isFix Fix{} = True
 isFix _ = False
 
 -- check if it's a recursive let binding
 isLetRec :: Expression -> Bool
-isLetRec (LetRec _ _ _) = True
+isLetRec LetRec{} = True
 isLetRec _ = False
 
 -- check if it's a conditional statement
 isIf :: Expression -> Bool
-isIf (If _ _ _) = True
+isIf If{} = True
 isIf _ = False
 
 -- check if it's an addition
 isAddition :: Expression -> Bool
-isAddition (Addition _ _) = True
+isAddition Addition{} = True
 isAddition _ = False
 
 -- check if it's a subtraction
 isSubtraction :: Expression -> Bool
-isSubtraction (Subtraction _ _) = True
+isSubtraction Subtraction{} = True
 isSubtraction _ = False
 
 -- check if it's a multiplication
 isMultiplication :: Expression -> Bool
-isMultiplication (Multiplication _ _) = True
+isMultiplication Multiplication{} = True
 isMultiplication _ = False
 
 -- check if it's a division
 isDivision :: Expression -> Bool
-isDivision (Division _ _) = True
+isDivision Division{} = True
 isDivision _ = False
 
 -- check if it's an equality check
 isEqual :: Expression -> Bool
-isEqual (Equal _ _) = True
+isEqual Equal{} = True
 isEqual _ = False
 
 -- check if it's a non equality check
 isNotEqual :: Expression -> Bool
-isNotEqual (NotEqual _ _) = True
+isNotEqual NotEqual{} = True
 isNotEqual _ = False
 
 -- check if it's a lesser than check
 isLessThan :: Expression -> Bool
-isLessThan (LesserThan _ _) = True
+isLessThan LesserThan{} = True
 isLessThan _ = False
 
 -- check if it's a greater than check
 isGreaterThan :: Expression -> Bool
-isGreaterThan (GreaterThan _ _) = True
+isGreaterThan GreaterThan{} = True
 isGreaterThan _ = False
 
 -- check if it's a lesser than or equal to check
 isLessEqualTo :: Expression -> Bool
-isLessEqualTo (LesserEqualTo _ _) = True
+isLessEqualTo LesserEqualTo{} = True
 isLessEqualTo _ = False
 
 -- check if it's a greater than or equal to check
 isGreaterEqualTo :: Expression -> Bool
-isGreaterEqualTo (GreaterEqualTo _ _) = True
+isGreaterEqualTo GreaterEqualTo{} = True
 isGreaterEqualTo _ = False
 
 -- check if it's an unit
@@ -328,117 +328,117 @@ isUnit _ = False
 
 -- check if it's a pair
 isPair :: Expression -> Bool
-isPair (Pair _ _) = True
+isPair Pair{} = True
 isPair _ = False
 
 -- check if it's a first projection
 isFirst :: Expression -> Bool
-isFirst (First _) = True
+isFirst First{} = True
 isFirst _ = False
 
 -- check if it's a second projection
 isSecond :: Expression -> Bool
-isSecond (Second _) = True
+isSecond Second{} = True
 isSecond _ = False
 
 -- check if it's a tuple
 isTuple :: Expression -> Bool
-isTuple (Tuple _) = True
+isTuple Tuple{} = True
 isTuple _ = False
 
 -- check if it's a projection from tuples
 isProjectionTuple :: Expression -> Bool
-isProjectionTuple (ProjectionTuple _ _ _) = True
+isProjectionTuple ProjectionTuple{} = True
 isProjectionTuple _ = False
 
 -- check if it's a record
 isRecord :: Expression -> Bool
-isRecord (Record _) = True
+isRecord Record{} = True
 isRecord _ = False
 
 -- check if it's a projection from records
 isProjectionRecord :: Expression -> Bool
-isProjectionRecord (ProjectionRecord _ _ _) = True
+isProjectionRecord ProjectionRecord{} = True
 isProjectionRecord _ = False
 
 -- check if it's a case
 isCase :: Expression -> Bool
-isCase (Case _ _ _) = True
+isCase Case{} = True
 isCase _ = False
 
 -- check if it's a left tag
 isLeftTag :: Expression -> Bool
-isLeftTag (LeftTag _ _) = True
+isLeftTag LeftTag{} = True
 isLeftTag _ = False
 
 -- check if it's a right tag
 isRightTag :: Expression -> Bool
-isRightTag (RightTag _ _) = True
+isRightTag RightTag{} = True
 isRightTag _ = False
 
 -- check if it's a variant case
 isCaseVariant :: Expression -> Bool
-isCaseVariant (CaseVariant _ _) = True
+isCaseVariant CaseVariant{} = True
 isCaseVariant _ = False
 
 -- check if it's a tag
 isTag :: Expression -> Bool
-isTag (Tag _ _ _) = True
+isTag Tag{} = True
 isTag _ = False
 
 -- check if is a empty list
 isNil :: Expression -> Bool
-isNil (Nil _) = True
+isNil Nil{} = True
 isNil _ = False
 
 -- check if is a list constructor
 isCons :: Expression -> Bool
-isCons (Cons _ _ _) = True
+isCons Cons{} = True
 isCons _ = False
 
 -- check if is a test for empty list
 isIsNil :: Expression -> Bool
-isIsNil (IsNil _ _) = True
+isIsNil IsNil{} = True
 isIsNil _ = False
 
 -- check if is a head of a list
 isHead :: Expression -> Bool
-isHead (Head _ _) = True
+isHead Head{} = True
 isHead _ = False
 
 -- check if is a tail of a list
 isTail :: Expression -> Bool
-isTail (Tail _ _) = True
+isTail Tail{} = True
 isTail _ = False
 
 -- check if it's a fold
 isFold :: Expression -> Bool
-isFold (Fold _ _) = True
+isFold Fold{} = True
 isFold _ = False
 
 -- check if it's an unfold
 isUnfold :: Expression -> Bool
-isUnfold (Unfold _ _) = True
+isUnfold Unfold{} = True
 isUnfold _ = False
 
 -- check if it's a type information
 isTypeInformation :: Expression -> Bool
-isTypeInformation (TypeInformation _ _) = True
+isTypeInformation TypeInformation{} = True
 isTypeInformation _ = False
 
 -- check if it's a cast
 isCast :: Expression -> Bool
-isCast (Cast _ _ _) = True
+isCast Cast{} = True
 isCast _ = False
 
 -- check if it's a blame
 isBlame :: Expression -> Bool
-isBlame (Blame _ _) = True
+isBlame Blame{} = True
 isBlame _ = False
 
 -- check if it's an error
 isError :: Expression -> Bool
-isError (Error _) = True
+isError Error{} = True
 isError _ = False
 
 -- check if it's a value
@@ -454,7 +454,7 @@ isValue e =
     (isRecord e && isValueRecord e) ||
     ((isLeftTag e || isRightTag e) && isValueSums e) ||
     (isTag e && isValueVariants e) ||
-    (isNil e) ||
+    isNil e ||
     (isCons e && isValueCons e) ||
     isFold e ||
     isValueCast e ||
@@ -473,7 +473,7 @@ isValueTuple _ = False
 
 -- check if record is a value
 isValueRecord :: Expression -> Bool
-isValueRecord (Record records) = all (\x -> isValue $ snd x) records
+isValueRecord (Record records) = all (isValue . snd) records
 isValueRecord _ = False
 
 -- check if sum is a value
@@ -634,7 +634,7 @@ substitute s@(old, new) e@(GreaterEqualTo expr1 expr2) =
     GreaterEqualTo (substitute s expr1) (substitute s expr2)
 
 -- Unit
-substitute s@(old, new) e@(Unit) = e
+substitute s@(old, new) e@Unit = e
 
 -- Pairs
 substitute s@(old, new) e@(Pair expr1 expr2) =

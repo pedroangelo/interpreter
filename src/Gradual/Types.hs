@@ -64,20 +64,20 @@ mapType f t@(ArrowType t1 t2) =
     f (ArrowType (mapType f t1) (mapType f t2))
 
 -- Integer type
-mapType f t@(IntType) = f t
+mapType f t@IntType = f t
 
 -- Boolean type
-mapType f t@(BoolType) = f t
+mapType f t@BoolType = f t
 
 -- Dynamic type
-mapType f t@(DynType) = f t
+mapType f t@DynType = f t
 
 -- For all quantifier
 mapType f t@(ForAll var t') =
     f (ForAll var $ mapType f t')
 
 -- Unit typ
-mapType f t@(UnitType) = f t
+mapType f t@UnitType = f t
 
 -- Product type
 mapType f t@(ProductType t1 t2) =
@@ -110,32 +110,32 @@ mapType f t@(Mu var t') = f (Mu var $ mapType f t')
 
 -- check if it's a variable type
 isVarType :: Type -> Bool
-isVarType (VarType _) = True
+isVarType VarType{} = True
 isVarType _ = False
 
 -- check if it's a function type
 isArrowType :: Type -> Bool
-isArrowType (ArrowType _ _) = True
+isArrowType ArrowType{} = True
 isArrowType _ = False
 
 -- check if it's an integer type
 isIntType :: Type -> Bool
-isIntType (IntType) = True
+isIntType IntType = True
 isIntType _ = False
 
 -- check if it's a boolean type
 isBoolType :: Type -> Bool
-isBoolType (BoolType) = True
+isBoolType BoolType = True
 isBoolType _ = False
 
 -- check if it's a dynamic type
 isDynType :: Type -> Bool
-isDynType (DynType) = True
+isDynType DynType = True
 isDynType _ = False
 
 -- check if it's a for all quantifier
 isForAllType :: Type -> Bool
-isForAllType (ForAll _ _) = True
+isForAllType ForAll{} = True
 isForAllType _ = False
 
 -- check if it's an unit type
@@ -145,37 +145,37 @@ isUnitType _ = False
 
 -- check if it's a product type
 isProductType :: Type -> Bool
-isProductType (ProductType _ _) = True
+isProductType ProductType{} = True
 isProductType _ = False
 
 -- check if it's a tuple type
 isTupleType :: Type -> Bool
-isTupleType (TupleType _) = True
+isTupleType TupleType{} = True
 isTupleType _ = False
 
 -- check if it's a record type
 isRecordType :: Type -> Bool
-isRecordType (RecordType _) = True
+isRecordType RecordType{} = True
 isRecordType _ = False
 
 -- check if it's a sum type
 isSumType :: Type -> Bool
-isSumType (SumType _ _) = True
+isSumType SumType{} = True
 isSumType _ = False
 
 -- check if it's a variant type
 isVariantType :: Type -> Bool
-isVariantType (VariantType _) = True
+isVariantType VariantType{} = True
 isVariantType _ = False
 
 -- check if it's a list type
 isListType :: Type -> Bool
-isListType (ListType _) = True
+isListType ListType{} = True
 isListType _ = False
 
 -- check if it's a recursive type
 isMuType :: Type -> Bool
-isMuType (Mu _ _) = True
+isMuType Mu{} = True
 isMuType _ = False
 
 -- check if it's a ground type
@@ -184,12 +184,12 @@ isGroundType (ArrowType DynType DynType) = True
 isGroundType IntType = True
 isGroundType BoolType = True
 isGroundType (ForAll _ DynType) = True
-isGroundType (UnitType) = True
+isGroundType UnitType = True
 isGroundType (ProductType DynType DynType) = True
 isGroundType (TupleType ts) = all isDynType ts
-isGroundType (RecordType ts) = all (\x -> isDynType $ snd x) ts
+isGroundType (RecordType ts) = all (isDynType . snd) ts
 isGroundType (SumType DynType DynType) = True
-isGroundType (VariantType ts) = all (\x -> isDynType $ snd x) ts
+isGroundType (VariantType ts) = all (isDynType . snd) ts
 isGroundType (ListType DynType) = True
 isGroundType (Mu _ DynType) = True
 isGroundType _ = False
@@ -224,17 +224,17 @@ compareSize (TupleType ts1) (TupleType ts2) = length ts1 == length ts2
 
 -- get ground type
 getGroundType :: Type -> Type
-getGroundType (ArrowType _ _) = ArrowType DynType DynType
+getGroundType ArrowType{} = ArrowType DynType DynType
 getGroundType IntType = IntType
 getGroundType BoolType = BoolType
-getGroundType (ForAll _ _) = ForAll "" DynType
-getGroundType (UnitType) = UnitType
-getGroundType (ProductType _ _) = ProductType DynType DynType
-getGroundType (TupleType ts) = TupleType $ map (\x -> DynType) ts
+getGroundType ForAll{} = ForAll "" DynType
+getGroundType UnitType = UnitType
+getGroundType ProductType{} = ProductType DynType DynType
+getGroundType (TupleType ts) = TupleType $ map (const DynType) ts
 getGroundType (RecordType ts) = RecordType $ map (\x -> (fst x, DynType)) ts
-getGroundType (SumType _ _) = SumType DynType DynType
+getGroundType SumType{} = SumType DynType DynType
 getGroundType (VariantType ts) = VariantType $ map (\x -> (fst x, DynType)) ts
-getGroundType (ListType _) = ListType DynType
+getGroundType ListType{} = ListType DynType
 getGroundType (Mu var _) = Mu var DynType
 
 -- get label and type from record type
@@ -262,20 +262,20 @@ substituteType s@(old, new) t@(ArrowType t1 t2) =
     ArrowType (substituteType s t1) (substituteType s t2)
 
 -- Integer type
-substituteType s@(old, new) t@(IntType) = t
+substituteType s@(old, new) t@IntType = t
 
 -- Boolean type
-substituteType s@(old, new) t@(BoolType) = t
+substituteType s@(old, new) t@BoolType = t
 
 -- Dynamic type
-substituteType s@(old, new) t@(DynType) = t
+substituteType s@(old, new) t@DynType = t
 
 -- for all quantifier
 substituteType s@(old, new) t@(ForAll var t') =
     ForAll var $ substituteType s t'
 
 -- Unit type
-substituteType s@(old, new) t@(UnitType) = t
+substituteType s@(old, new) t@UnitType = t
 
 -- Product type
 substituteType s@(old, new) t@(ProductType t1 t2) =
@@ -324,16 +324,16 @@ unfoldType s@(old, new) t@(ArrowType t1 t2) =
     ArrowType (unfoldType s t1) (unfoldType s t2)
 
 -- Integer type
-unfoldType s@(old, new) t@(IntType) = t
+unfoldType s@(old, new) t@IntType = t
 
 -- Boolean type
-unfoldType s@(old, new) t@(BoolType) = t
+unfoldType s@(old, new) t@BoolType = t
 
 -- Dynamic type
-unfoldType s@(old, new) t@(DynType) = t
+unfoldType s@(old, new) t@DynType = t
 
 -- Unit type
-unfoldType s@(old, new) t@(UnitType) = t
+unfoldType s@(old, new) t@UnitType = t
 
 -- Product type
 unfoldType s@(old, new) t@(ProductType t1 t2) =
@@ -377,7 +377,7 @@ substituteConstraint s (Consistency t1 t2) =
 generalizeTypeVariables :: Context -> Type -> Type
 generalizeTypeVariables ctx t =
     let
-        freeVarsContext = nub $ concat $ map (\x -> freeVariables $ fst $ snd x) ctx
+        freeVarsContext = nub $ concatMap (freeVariables . fst . snd) ctx
         freeVars = freeVariables t
     -- insert forall quantifiers
     in buildForAll t $ freeVars \\ freeVarsContext
@@ -388,7 +388,7 @@ freeVariables t =
         -- get list of type variables
         (exclude, include) = collectTypeVariables t
         -- remove type variables that are not free
-        vars = (nub include) \\ exclude
+        vars = nub include \\ exclude
     in vars
 
 -- collect all type variables
@@ -399,13 +399,13 @@ collectTypeVariables t@(ArrowType t1 t2) =
         (exclude1, include1) = collectTypeVariables t1
         (exclude2, include2) = collectTypeVariables t2
     in (exclude1 ++ exclude2, include1 ++ include2)
-collectTypeVariables t@(IntType) = ([],[])
-collectTypeVariables t@(BoolType) = ([],[])
-collectTypeVariables t@(DynType) = ([],[])
+collectTypeVariables t@IntType = ([],[])
+collectTypeVariables t@BoolType = ([],[])
+collectTypeVariables t@DynType = ([],[])
 collectTypeVariables t@(ForAll var typ) =
     let (exclude, include) = collectTypeVariables typ
     in (exclude ++ [var], include)
-collectTypeVariables t@(UnitType) = ([],[])
+collectTypeVariables t@UnitType = ([],[])
 collectTypeVariables t@(ProductType t1 t2) =
     let
         (exclude1, include1) = collectTypeVariables t1
@@ -414,14 +414,14 @@ collectTypeVariables t@(ProductType t1 t2) =
 collectTypeVariables t@(TupleType ts) =
     let
         result = map collectTypeVariables ts
-        (exclude, include) = foldr1 (\x -> \y ->
+        (exclude, include) = foldr1 (\x y ->
             (nub $ fst x ++ fst y,
             nub $ snd x ++ snd y)) result
     in (exclude, include)
 collectTypeVariables t@(RecordType ts) =
     let
         result = map (collectTypeVariables . snd) ts
-        (exclude, include) = foldr1 (\x -> \y ->
+        (exclude, include) = foldr1 (\x y ->
             (nub $ fst x ++ fst y,
             nub $ snd x ++ snd y)) result
     in (exclude, include)
@@ -433,7 +433,7 @@ collectTypeVariables t@(SumType t1 t2) =
 collectTypeVariables t@(VariantType ts) =
     let
         result = map (collectTypeVariables . snd) ts
-        (exclude, include) = foldr1 (\x -> \y ->
+        (exclude, include) = foldr1 (\x y ->
             (nub $ fst x ++ fst y,
             nub $ snd x ++ snd y)) result
     in (exclude, include)

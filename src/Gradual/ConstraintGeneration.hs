@@ -25,13 +25,13 @@ generateConstraints (ctx, Variable var) = do
         throwError $ "Error: Variable " ++ var ++ " does not exist!! Terms must be closed!!"
     else do
         -- retrieve type
-        let (finalType, constraints) = fromJust $ varType
+        let (finalType, constraints) = fromJust varType
         i <- get
         -- replace quantified variables by type variables
         -- instantiation of Damas-Milner
         let ((finalType', constraints'), i') =
                 runState (replaceQuantifiedVariables finalType constraints) i
-        put (i')
+        put i'
         -- build typed expression
         let typedExpr = TypeInformation finalType' (Variable var)
         -- return type
@@ -472,7 +472,7 @@ generateConstraints (ctx, CaseVariant expr alternatives) = do
     -- build typed expression
     let typedExpr = TypeInformation t3 (CaseVariant expr_typed typedAlternatives)
     -- return type along with all the constraints
-    return (t3, constraints ++ (concat cs) ++
+    return (t3, constraints ++ concat cs ++
         constraints' ++ constraints'', typedExpr)
 
 -- (Ctag) if expression is a tag
@@ -671,11 +671,11 @@ codomain t
         -- return as type t2
         return (t2, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic typ
         return (DynType, [])
     -- throw error
-    | otherwise = throwError $ "Error: Type " ++ (show t) ++ " has no codomain!!"
+    | otherwise = throwError $ "Error: Type " ++ show t ++ " has no codomain!!"
 
 -- generate constraints for domain relation
 domain :: Type -> Type -> StateT Int (Except String) Constraints
@@ -696,11 +696,11 @@ domain t1 t2
         -- return constraints t11 ~C t2
         return [Consistency t11 t2]
     -- if t1 is dynamic type
-    | isDynType t1 = do
+    | isDynType t1 =
         -- return constraints ? ~C t2
         return [Consistency DynType t2]
     -- throw error
-    | otherwise = throwError $ "Error: Type " ++ (show t1) ++ " has no domain!!"
+    | otherwise = throwError $ "Error: Type " ++ show t1 ++ " has no domain!!"
 
 -- generate components of arrow type
 patternMatchArrow :: Type -> StateT Int (Except String) (Type, Constraints)
@@ -721,11 +721,11 @@ patternMatchArrow t
         -- return constraints t11 ~C t2
         return (t, [])
     -- if t1 is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return constraints ? ~C t2
         return (ArrowType DynType DynType, [])
     -- throw error
-    | otherwise = throwError $ "Error: Type " ++ (show t) ++ " in not an arrow type!!"
+    | otherwise = throwError $ "Error: Type " ++ show t ++ " in not an arrow type!!"
 
 -- generate constraints and type for meet relation
 meet :: Type -> Type -> Except String (Type, Constraints)
@@ -736,7 +736,7 @@ meet t1 t2
     | isDynType t2 = return (t1, [Consistency t1 DynType])
     | isDynType t1 = return (t2, [Consistency DynType t2])
     | isVarType t1 = return (t1, [Consistency t1 t2])
-    | (not $ isVarType t1) && isVarType t2 = return (t2, [Consistency t1 t2])
+    | not (isVarType t1) && isVarType t2 = return (t2, [Consistency t1 t2])
     | isArrowType t1 && isArrowType t2 = do
         let    (ArrowType t11 t12) = t1
         let (ArrowType t21 t22) = t2
@@ -754,7 +754,7 @@ meet t1 t2
         let TupleType types2 = t2
         let list = zip types1 types2
         -- run meet for each pair of types
-        results <- mapM (\x -> meet (fst x) (snd x)) list
+        results <- mapM (uncurry meet) list
         -- get resulting types
         let ts = map fst results
         -- get resulting constraints
@@ -765,7 +765,7 @@ meet t1 t2
         let (_, types2) = fromRecordType t2
         let list = zip types1 types2
         -- run meet for each pair of types
-        results <- mapM (\x -> meet (fst x) (snd x)) list
+        results <- mapM (uncurry meet) list
         -- get resulting types
         let ts = map fst results
         -- get resulting constraints
@@ -782,7 +782,7 @@ meet t1 t2
         let (_, types2) = fromVariantType t2
         let list = zip types1 types2
         -- run meet for each pair of types
-        results <- mapM (\x -> meet (fst x) (snd x)) list
+        results <- mapM (uncurry meet) list
         -- get resulting types
         let ts = map fst results
         -- get resulting constraints
@@ -799,7 +799,7 @@ meet t1 t2
         (t, constraints) <- meet t1' t2'
         return (Mu var1 t, constraints)
     | otherwise = throwError $
-        "Error: Types " ++ (show t1) ++ " and " ++ (show t2) ++ " are not compatible!!"
+        "Error: Types " ++ show t1 ++ " and " ++ show t2 ++ " are not compatible!!"
 
 meetM :: (Type, Constraints) -> Type -> Except String (Type, Constraints)
 meetM (t1, c) t2 = do
@@ -819,16 +819,16 @@ patternMatchProduct t
         -- return types and equality relation t =C t1 × t2
         return (ProductType t1 t2, [Equality t (ProductType t1 t2)])
     -- if t is sum type
-    | isProductType t = do
+    | isProductType t =
         -- return types
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic typ
         return (ProductType DynType DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a product type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a product type!!"
 
 -- get components of tuple type
 patternMatchTuple :: Int -> Type
@@ -844,16 +844,16 @@ patternMatchTuple n t
         -- return types and equality relation t =C {Ti}
         return (TupleType typeVars, [Equality t (TupleType typeVars)])
     -- if t is tuple type
-    | isTupleType t = do
+    | isTupleType t =
         -- return types
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic type
         return (TupleType $ replicate n DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a tuple type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a tuple type!!"
 
 -- get components of record type
 patternMatchRecord :: [Label] -> Type
@@ -871,16 +871,16 @@ patternMatchRecord labels t
         -- return types and equality relation t =C {li:Ti}
         return (RecordType list, [Equality t (RecordType list)])
     -- if t is record type
-    | isRecordType t = do
+    | isRecordType t =
         -- return types
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic type
         return (RecordType $ zip labels $ replicate n DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a record type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a record type!!"
     -- number of fields
     where n = length labels
 
@@ -897,16 +897,16 @@ patternMatchSum t
         -- return types and equality relation t =C t1 + t2
         return (SumType t1 t2, [Equality t (SumType t1 t2)])
     -- if t is sum type
-    | isSumType t = do
+    | isSumType t =
         -- return types
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic typ
         return (SumType DynType DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a sum type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a sum type!!"
 
 -- get components of variant type
 patternMatchVariant :: [Label] -> Type
@@ -924,16 +924,16 @@ patternMatchVariant labels t
         -- return types and equality relation t =C <li:Ti>
         return (VariantType list, [Equality t (VariantType list)])
     -- if t is variant type
-    | isVariantType t = do
+    | isVariantType t =
         -- return types
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic type
         return (VariantType $ zip labels $ replicate n DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a variant type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a variant type!!"
     -- number of alternatives
     where n = length labels
 
@@ -949,16 +949,16 @@ patternMatchList t
         -- return types and equality relation t =C [t']
         return (ListType t', [Equality t (ListType t')])
     -- if t is sum type
-    | isListType t = do
+    | isListType t =
         -- return types
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic typ
         return (ListType DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a list type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a list type!!"
 
 -- get components of recursive type
 patternMatchMu :: Var -> Type
@@ -976,13 +976,13 @@ patternMatchMu var t
         -- return types and equality relation t =C μVar.T
         return (typ, [Equality t typ])
     -- if t is variant type
-    | isMuType t = do
+    | isMuType t =
         -- return type
         return (t, [])
     -- if t is dynamic type
-    | isDynType t = do
+    | isDynType t =
         -- return dynamic type
         return (Mu var DynType, [])
     -- throw error
     | otherwise =
-        throwError $ "Error: Type " ++ (show t) ++ " is not a recursive type!!"
+        throwError $ "Error: Type " ++ show t ++ " is not a recursive type!!"

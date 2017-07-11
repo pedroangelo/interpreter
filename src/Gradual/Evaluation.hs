@@ -57,7 +57,7 @@ evaluate e@(Ascription expr typ)
     -- push errors to top level
     | isError expr = expr
     -- remove ascription
-    | isValue expr = evaluationStyle $ expr
+    | isValue expr = evaluationStyle expr
     | otherwise =
         let v1 = evaluate expr
         in evaluationStyle $ Ascription v1 typ
@@ -365,7 +365,7 @@ evaluate e@(GreaterEqualTo expr1 expr2)
         in Bool (i1 >= i2)
 
 -- if expression is an unit
-evaluate e@(Unit) = e
+evaluate e@Unit = e
 
 -- if expression is a pair
 evaluate e@(Pair expr1 expr2)
@@ -398,7 +398,7 @@ evaluate e@(First expr)
     -- project first element of pair
     | isPair expr =
         let (Pair expr1 expr2) = expr
-        in evaluationStyle $ expr1
+        in evaluationStyle expr1
     -- C-FIRST - simulate casts on data types
     | isCast expr =
         let
@@ -420,7 +420,7 @@ evaluate e@(Second expr)
     -- project second element of pair
     | isPair expr =
         let (Pair expr1 expr2) = expr
-        in evaluationStyle $ expr2
+        in evaluationStyle expr2
     -- C-SECOND - simulate casts on data types
     | isCast expr =
         let
@@ -432,11 +432,11 @@ evaluate e@(Second expr)
 -- if expression is a tuple
 evaluate e@(Tuple exprs)
     -- push blames to the top level
-    | any isBlame $ exprs =
+    | any isBlame exprs =
         let    blames = filter isBlame exprs
         in head blames
     -- push errors to the top level
-    | any isError $ exprs =
+    | any isError exprs =
         let    errors = filter isError exprs
         in head errors
     -- reduce expressions
@@ -475,11 +475,11 @@ evaluate e@(ProjectionTuple index expr typ)
 -- if expression is a record
 evaluate e@(Record records)
     -- push blames to the top level
-    | any isBlame $ exprs =
-        let    blames = filter isBlame exprs
+    | any isBlame exprs =
+        let blames = filter isBlame exprs
         in head blames
     -- push errors to the top level
-    | any isError $ exprs =
+    | any isError exprs =
         let    errors = filter isError exprs
         in head errors
     -- reduce expressions
@@ -594,7 +594,7 @@ evaluate e@(CaseVariant expr alternatives)
             (Tag label expr' _) = expr
             -- obtain correct alternative according to label
             (_, var, alternative) =
-                head $ filter (\x -> label == (fst3 x)) alternatives
+                head $ filter (\x -> label == fst3 x) alternatives
         in evaluationStyle $ substitute (var, expr') alternative
     -- C-CaseVariant - simulate casts on data types
     | isCast expr =
@@ -686,7 +686,7 @@ evaluate e@(Head t expr)
     -- is cons
     | isCons expr =
         let (Cons t' expr1 expr2) = expr
-        in evaluationStyle $ expr1
+        in evaluationStyle expr1
     -- C-Head - simulate casts on datatypes
     | isCast expr =
         let (Cast (ListType t1) (ListType t2) expr') = expr
@@ -707,7 +707,7 @@ evaluate e@(Tail t expr)
     -- is cons
     | isCons expr =
         let (Cons t' expr1 expr2) = expr
-        in evaluationStyle $ expr2
+        in evaluationStyle expr2
     -- C-Tail - simulate casts on datatypes
     | isCast expr =
         let (Cast (ListType t1) (ListType t2) expr') = expr
@@ -762,7 +762,7 @@ evaluate e@(Cast t1 t2 expr)
     -- values don't reduce
     | isValue e = e
     -- evaluate inside a cast
-    | (not $ isValue expr) =
+    | not (isValue expr) =
         let expr2 = evaluate expr
         in evaluationStyle $ Cast t1 t2 expr2
     -- ID-BASE - remove casts to same types
@@ -772,14 +772,14 @@ evaluate e@(Cast t1 t2 expr)
             evaluationStyle expr'
     -- FAIL - cast fails
     | isCast expr && t1 == DynType && t2' == DynType &&
-        isGroundType t2 && isGroundType t1' && (not $ sameGround t1' t2) =
-            Blame t2 $ "cannot cast from " ++ (show t1') ++ " to " ++ (show t2)
+        isGroundType t2 && isGroundType t1' && not (sameGround t1' t2) =
+            Blame t2 $ "cannot cast from " ++ show t1' ++ " to " ++ show t2
     -- GROUND - cast types through their ground types
-    | (not $ isGroundType t1) && t2 == DynType =
+    | not (isGroundType t1) && t2 == DynType =
         let g = getGroundType t1
         in evaluationStyle $ Cast g DynType $ Cast t1 g expr
     -- EXPAND - cast types through their ground types
-    | (not $ isGroundType t2) && t1 == DynType =
+    | not (isGroundType t2) && t1 == DynType =
         let g = getGroundType t2
         in evaluationStyle $ Cast g t2 $ Cast DynType g expr
     -- Project types and expression from inner casts

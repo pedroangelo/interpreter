@@ -257,13 +257,13 @@ insertCasts e@(TypeInformation typ (CaseVariant expr alternatives)) =
         -- build types
         TypeInformation pm _ = expr'
         -- get types for each alternative
-        types = map (\x -> fromTypeInformation $ trd3 x) alternativesCasts
+        types = map (fromTypeInformation . trd3) alternativesCasts
         -- get labels
         labels = fst3 $ fromAlternatives alternatives
         -- obtain pattern math of variant type
         pm' = patternMatchVariant pm labels
         -- get join type of all types from alternatives
-        j = foldl joinType (head types) (tail types)
+        j = foldl1 joinType types
         -- build casts
         cast = Cast pm pm' expr'
         casts = map
@@ -353,42 +353,42 @@ insertCasts e@(TypeInformation _ (Error _)) = e
 -- obtain pattern match type for arrow
 patternMatchArrow :: Type -> Type
 patternMatchArrow e@(ArrowType type1 type2) = e
-patternMatchArrow e@(DynType) = ArrowType DynType DynType
+patternMatchArrow DynType = ArrowType DynType DynType
 
 -- obtain pattern match type for product
 patternMatchProduct :: Type -> Type
 patternMatchProduct e@(ProductType type1 type2) = e
-patternMatchProduct e@(DynType) = ProductType DynType DynType
+patternMatchProduct DynType = ProductType DynType DynType
 
 -- obtain pattern match type for tuples
 patternMatchTuple :: Type -> Int -> Type
 patternMatchTuple e@(TupleType _) i = e
-patternMatchTuple e@(DynType) i = TupleType $ replicate i DynType
+patternMatchTuple DynType i = TupleType $ replicate i DynType
 
 -- obtain pattern match type for records
 patternMatchRecords :: Type -> [String] -> Type
 patternMatchRecords e@(RecordType _) labels = e
-patternMatchRecords e@(DynType) labels = RecordType $ map (\x -> (x, DynType)) labels
+patternMatchRecords DynType labels = RecordType $ map (\x -> (x, DynType)) labels
 
 -- obtain pattern match type for sum
 patternMatchSum :: Type -> Type
 patternMatchSum e@(SumType type1 type2) = e
-patternMatchSum e@(DynType) = SumType DynType DynType
+patternMatchSum DynType = SumType DynType DynType
 
 -- obtain pattern match type for variant
 patternMatchVariant :: Type -> [String] -> Type
 patternMatchVariant e@(VariantType _) labels = e
-patternMatchVariant e@(DynType) labels = VariantType $ map (\x -> (x, DynType)) labels
+patternMatchVariant DynType labels = VariantType $ map (\x -> (x, DynType)) labels
 
 -- obtain pattern match type for list
 patternMatchList :: Type -> Type
 patternMatchList e@(ListType _) = e
-patternMatchList e@(DynType) = ListType DynType
+patternMatchList DynType = ListType DynType
 
 -- obtain pattern math type for recursive type
 patternMatchMu :: Type -> Var -> Type
 patternMatchMu e@(Mu var typ) _ = e
-patternMatchMu e@(DynType) var = Mu var DynType
+patternMatchMu DynType var = Mu var DynType
 
 -- obtain join of types
 joinType :: Type -> Type -> Type
@@ -409,7 +409,7 @@ joinType (TupleType list1) (TupleType list2) =
                 -- get types
                 t1 = fst x
                 t2 = snd x
-                in (joinType t1 t2))
+                in joinType t1 t2)
             $ zip list1 list2
     in TupleType list
 joinType (RecordType list1) (RecordType list2) =
@@ -452,4 +452,4 @@ joinType (Mu var1 t1) (Mu var2 t2) =
 joinType t1 t2
     | (not (isArrowType t1) || not (isProductType t1) || not (isTupleType t1) || not (isSumType t1) || not (isVariantType t1) || not (isRecordType t1) || not (isListType t1) || not (isMuType t1)) &&
          (not (isArrowType t2) || not (isProductType t2) || not (isTupleType t2) || not (isSumType t2) || not (isVariantType t2) || not (isRecordType t2) || not (isListType t2) || not (isMuType t2)) =
-        if (isDynType t1) then t2 else t1
+        if isDynType t1 then t2 else t1
