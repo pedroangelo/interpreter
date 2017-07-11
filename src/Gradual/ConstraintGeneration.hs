@@ -1,10 +1,10 @@
-module ConstraintGeneration (
+module Gradual.ConstraintGeneration (
     generateConstraints
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Gradual.Syntax
+import Gradual.Types
 
 -- Imports
 import Control.Monad.State

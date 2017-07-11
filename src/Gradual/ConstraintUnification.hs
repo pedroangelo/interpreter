@@ -1,10 +1,10 @@
-module ConstraintUnification (
+module Gradual.ConstraintUnification (
     unifyConstraints
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Gradual.Syntax
+import Gradual.Types
 
 -- Imports
 import Control.Monad.Except

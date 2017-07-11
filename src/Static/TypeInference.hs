@@ -1,13 +1,13 @@
-module TypeInference where
+module Static.TypeInference where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Static.Syntax
+import Static.Types
+import Static.Examples
 
 -- Type Inference
-import ConstraintGeneration
-import ConstraintUnification
+import Static.ConstraintGeneration
+import Static.ConstraintUnification
 
 -- Imports
 import Control.Monad.State

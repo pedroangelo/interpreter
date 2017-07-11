@@ -1,10 +1,10 @@
-module CastInsertion (
+module Gradual.CastInsertion (
     insertCasts
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Gradual.Syntax
+import Gradual.Types
 
 -- Imports
 import Data.Maybe

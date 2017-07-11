@@ -1,16 +1,16 @@
-module TypeInference (
+module Gradual.TypeInference (
     inferType,
     insertTypeInformation
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Gradual.Syntax
+import Gradual.Types
+import Gradual.Examples
 
 -- Type Inference
-import ConstraintGeneration
-import ConstraintUnification
+import Gradual.ConstraintGeneration
+import Gradual.ConstraintUnification
 
 -- Imports
 import Control.Monad.State

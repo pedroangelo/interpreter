@@ -1,11 +1,11 @@
-module PrettyPrinter (
+module Gradual.PrettyPrinter (
     prettyExpression,
     prettyType
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Gradual.Syntax
+import Gradual.Types
 
 -- Imports
 import Data.List

@@ -1,8 +1,8 @@
-module Examples where
+module Gradual.Examples where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Gradual.Syntax
+import Gradual.Types
 
 -- STANDARD TERMS
 

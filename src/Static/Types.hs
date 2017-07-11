@@ -1,4 +1,4 @@
-module Types where
+module Static.Types where
 
 -- Imports
 import Data.Char

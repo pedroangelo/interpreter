@@ -1,28 +1,28 @@
-module Interpreter (
+module Gradual.Interpreter (
     interpret,
     runCode,
     runFile
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Gradual.Syntax
+import Gradual.Types
+import Gradual.Examples
 
 -- Type Inference
-import TypeInference
+import Gradual.TypeInference
 
 -- Cast Insertion
-import CastInsertion
+import Gradual.CastInsertion
 
 -- Evaluation
-import Evaluation
+import Gradual.Evaluation
 
 -- Pretty Printing
-import PrettyPrinter
+import Gradual.PrettyPrinter
 
 -- Parser
-import Parser
+import Gradual.Parser
 
 -- Imports
 import Data.Either

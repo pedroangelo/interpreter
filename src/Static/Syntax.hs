@@ -1,7 +1,7 @@
-module Syntax where
+module Static.Syntax where
 
 -- Types
-import Types
+import Static.Types
 
 -- Expressions in λ-calculus and extensions
 data Expression

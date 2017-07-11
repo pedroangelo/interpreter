@@ -1,4 +1,4 @@
-module Types where
+module Gradual.Types where
 
 -- Imports
 import Data.Char

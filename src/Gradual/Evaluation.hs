@@ -1,11 +1,11 @@
-module Evaluation (
+module Gradual.Evaluation (
     evaluate
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Gradual.Syntax
+import Gradual.Types
+import Gradual.Examples
 
 -- Imports
 import Data.Maybe

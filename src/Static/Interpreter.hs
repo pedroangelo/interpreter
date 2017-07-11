@@ -1,17 +1,17 @@
-module Interpreter (
+module Static.Interpreter (
     interpret
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Static.Syntax
+import Static.Types
+import Static.Examples
 
 -- Type Inference
-import TypeInference
+import Static.TypeInference
 
 -- Evaluation
-import Evaluation
+import Static.Evaluation
 
 -- Imports
 import Data.Either

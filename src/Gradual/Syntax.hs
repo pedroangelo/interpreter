@@ -1,7 +1,7 @@
-module Syntax where
+module Gradual.Syntax where
 
 -- Types
-import Types
+import Gradual.Types
 
 -- Expressions in λ-calculus and extensions
 data Expression

@@ -1,10 +1,10 @@
-module ConstraintGeneration (
+module Static.ConstraintGeneration (
     generateConstraints
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Static.Syntax
+import Static.Types
 
 -- Imports
 import Control.Monad.State

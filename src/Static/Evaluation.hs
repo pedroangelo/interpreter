@@ -1,11 +1,11 @@
-module Evaluation (
+module Static.Evaluation (
     evaluate
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Static.Syntax
+import Static.Types
+import Static.Examples
 
 -- evaluate using call-by-value strategy
 evaluate :: Expression -> Expression

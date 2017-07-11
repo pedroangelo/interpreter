@@ -1,8 +1,8 @@
-module Examples where
+module Static.Examples where
 
 -- Syntax & Types
-import Syntax
-import Types
+import Static.Syntax
+import Static.Types
 
 lambda_I = Abstraction "i" $ Variable "i"
 

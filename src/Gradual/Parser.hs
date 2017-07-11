@@ -1,12 +1,12 @@
-module Parser (
+module Gradual.Parser (
     expressionParser,
     typeParser
 ) where
 
 -- Syntax & Types
-import Syntax
-import Types
-import Examples
+import Gradual.Syntax
+import Gradual.Types
+import Gradual.Examples
 
 -- Parsec
 import Text.Parsec hiding (label, labels)
