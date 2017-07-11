@@ -2,7 +2,7 @@
 Interpreter for a gradually typed functional language
 
 ### Instalation
-Install stack by following the guide in [Haskell Tool Stack](https://www.haskellstack.org/).
+Install stack ([Haskell Tool Stack](https://www.haskellstack.org/))
 ```
 $ wget -qO- https://get.haskellstack.org/ | sh
 ```
@@ -19,8 +19,6 @@ $ stack setup
 ```
 $ cd src/
 $ stack ghci
-```
-```
 > :l Gradual.Interpreter
 ```
 ### Interpret a program from the command line:
