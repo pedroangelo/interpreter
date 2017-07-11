@@ -1,11 +1,27 @@
 # interpreter
-Interpreter for a gradually typed functional language.
+Interpreter for a gradually typed functional language
 
+### Instalation
+Install stack by following the guide in [Haskell Tool Stack](https://www.haskellstack.org/).
+```bash
+$ wget -qO- https://get.haskellstack.org/ | sh
+```
+Clone repository
+```bash
+$ git clone git@github.com:pedroangelo/interpreter.git
+```
+Setup stack
+```bash
+$ cd interpreter/
+$ stack setup
+```
 ### Load interpreter module
+```bash
+$ cd src/
+$ stack ghci
+```
 ```haskell
-$ cd interpreter/src/gradual/
-$ ghci
-Prelude> :l Interpreter.hs
+> :l Gradual.Interpreter
 ```
 ### Interpret a program from the command line:
 ```haskell
