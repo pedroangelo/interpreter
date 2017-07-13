@@ -8,7 +8,7 @@ $ wget -qO- https://get.haskellstack.org/ | sh
 ```
 Clone repository
 ```
-$ git clone git@github.com:pedroangelo/interpreter.git
+$ git clone https://github.com/pedroangelo/interpreter.git
 ```
 Setup stack
 ```
@@ -17,7 +17,6 @@ $ stack setup
 ```
 ### Load interpreter module
 ```
-$ cd src/
 $ stack ghci
 > :l Gradual.Interpreter
 ```
