@@ -160,7 +160,7 @@ parameters_5_err = Application
 parameters_6 = Application
     (Annotation "x" DynType $ If (Variable "x") (Int 1) (Int 2))
     (Application
-        (parameters_1)
+        parameters_1
         (Bool True))
 
 -- (λx:? . if x then 1 else 2) (λx:? . (λy . y) x) 1 : Int
@@ -351,11 +351,11 @@ variants2_dyn_l = CaseVariant (Tag "b" (Bool True) (VariantType [("b", BoolType)
     ("i", "r", Application isZero (Variable "r"))]
 
 variants3 = Application
-    (CaseVariant (Tag "ib" (isZero) (VariantType [("ib", ArrowType IntType BoolType)]))
+    (CaseVariant (Tag "ib" isZero (VariantType [("ib", ArrowType IntType BoolType)]))
         [("ib", "l", Abstraction "x" $ Application (Variable "l") (Variable "x"))])
     (Int 1)
 
-variants3_dyn = CaseVariant (Tag "ib" (isZero) (VariantType [("ib", DynType)]))
+variants3_dyn = CaseVariant (Tag "ib" isZero (VariantType [("ib", DynType)]))
     [("ib", "l", Abstraction "x" $ Application (Variable "l") (Variable "x"))]
 
 records1 = ProjectionRecord "b" (Record [("b", Bool True)]) (RecordType [("b", BoolType)])
@@ -442,7 +442,7 @@ calculateCenterSquare = Abstraction "square" $
     Let "toplefty" (ProjectionRecord "y" (Variable "topleft") posType) $
     Let "bottomrightx" (ProjectionRecord "x" (Variable "bottomright") posType) $
     Let "bottomrighty" (ProjectionRecord "y" (Variable "bottomright") posType) $
-    Application (Application (buildPos)
+    Application (Application buildPos
         (Division (Addition (Variable "bottomrightx") (Variable "topleftx")) (Int 2)))
         (Division (Addition (Variable "toplefty") (Variable "bottomrighty")) (Int 2))
 
@@ -476,7 +476,7 @@ calculateCenter = Abstraction "shape" $
 -- Recursive Types
 
 -- List of Int
-intList = Mu "L" $ SumType (UnitType) (ProductType DynType (VarType "L"))
+intList = Mu "L" $ SumType UnitType (ProductType DynType (VarType "L"))
 intList' = unfoldType ("L", intList) intList
 
 nil = Fold intList $ LeftTag Unit intList'
@@ -489,11 +489,11 @@ isnil = Abstraction "l" $ Case (Unfold intList $ Variable "l")
     ("x", Bool False)
 
 hd = Abstraction "l" $ Case (Unfold intList $ Variable "l")
-    ("x", (Error "*** Exception: empty list"))
+    ("x", Error "*** Exception: empty list")
     ("x", First $ Variable "x")
 
 tl = Abstraction "l" $ Case (Unfold intList $ Variable "l")
-    ("x", (Error "*** Exception: empty list"))
+    ("x", Error "*** Exception: empty list")
     ("x", Second $ Variable "x")
 
 list1 = Application (Application cons (Int 1)) nil
@@ -505,34 +505,34 @@ listtrue = Application (Application cons (Bool True)) nil
 list1true = Application (Application cons (Int 1)) listtrue
 
 sumlist = Fix $ Abstraction "s" $ Abstraction "l" $
-    If (Application (isnil) (Variable "l"))
+    If (Application isnil (Variable "l"))
         (Int 0)
         (Addition
-            (Application (hd) (Variable "l"))
+            (Application hd (Variable "l"))
             (Application
                 (Variable "s")
-                (Application (tl) (Variable "l"))))
+                (Application tl (Variable "l"))))
 
 mapInt = Fix $ Abstraction "m" $ Abstraction "f" $ Abstraction "l" $
     If (Application isnil (Variable "l"))
         nil
         (Application
             (Application
-                (cons)
+                cons
                 (Application
                     (Variable "f")
-                    (Application (hd) (Variable "l"))))
+                    (Application hd (Variable "l"))))
             (Application
                 (Application (Variable "m") (Variable "f"))
-                (Application (tl) (Variable "l"))))
+                (Application tl (Variable "l"))))
 
-map_func f l =  Application (Application (mapInt) f) l
+map_func f l =  Application (Application mapInt f) l
 
 -- Ordering
 
 orderingType = VariantType [("LT", UnitType), ("EQ", UnitType), ("GT", UnitType)]
 
-compare_func x y = Application (Application compare' x) (y)
+compare_func x y = Application (Application compare' x) y
 
 compare' = Abstraction "x" $ Abstraction "y" $
     If (Equal (Variable "x") (Variable "y"))
@@ -564,9 +564,9 @@ tree1 = Fold treeType $ Tag "Node"
         ("Left", emptyTree ),
         ("Right", emptyTree )]) treeType'
 
-tree12 = Application (Application insertTree (Int 2)) (tree1)
+tree12 = Application (Application insertTree (Int 2)) tree1
 
-tree123 = Application (Application insertTree (Int 3)) (tree12)
+tree123 = Application (Application insertTree (Int 3)) tree12
 
 getNumberNode = Abstraction "node" $ ProjectionRecord "Value" (Variable "node") nodeType
 

@@ -91,7 +91,7 @@ unifyConstraints types (Consistency t1 t2 : cs) counter
     -- U ((t1 ~C t21 -> t22) : cs), t1 ∉ Vars(t21 -> t22)
     -- => U ((t12 ~C t22) : (t11 ~C t21) : (t1 =C t11 -> t12) : cs)
     | isVarType t1 && isArrowType t2 && not (belongs t1 t2) = do
-        let    t11 = newTypeVar counter
+        let t11 = newTypeVar counter
         let t12 = newTypeVar (counter + 1)
         let (ArrowType t21 t22) = t2
         let constraints = [Consistency t12 t22, Consistency t11 t21,
@@ -100,7 +100,7 @@ unifyConstraints types (Consistency t1 t2 : cs) counter
     -- U ((t1 ~C t21 × t22) : cs), t1 ∉ Vars(t21 × t22)
     -- => U ((t12 ~C t22) : (t11 ~C t21) : (t1 =C t11 × t12) : cs)
     | isVarType t1 && isProductType t2 && not (belongs t1 t2) = do
-        let    t11 = newTypeVar counter
+        let t11 = newTypeVar counter
         let t12 = newTypeVar (counter + 1)
         let (ProductType t21 t22) = t2
         let constraints = [Consistency t12 t22, Consistency t11 t21,
@@ -153,7 +153,7 @@ unifyConstraints types (Consistency t1 t2 : cs) counter
     -- U ((t1 ~C t21 + t22) : cs), t1 ∉ Vars(t21 + t22)
     -- => U ((t12 ~C t22) : (t11 ~C t21) : (t1 =C t11 + t12) : cs)
     | isVarType t1 && isSumType t2 && not (belongs t1 t2) = do
-        let    t11 = newTypeVar counter
+        let t11 = newTypeVar counter
         let t12 = newTypeVar (counter + 1)
         let (SumType t21 t22) = t2
         let constraints = [Consistency t12 t22, Consistency t11 t21,
@@ -186,14 +186,14 @@ unifyConstraints types (Consistency t1 t2 : cs) counter
     -- U ((t1 ~C [t2]) : cs), t1 ∉ Vars([t2]])
     -- => U ((t1' ~C t2) : (t1 =C [t1']) : cs)
     | isVarType t1 && isListType t2 && not (belongs t1 t2) = do
-        let    t1' = newTypeVar counter
+        let t1' = newTypeVar counter
         let (ListType t2') = t2
         let constraints = [Consistency t1' t2', Equality t1 (ListType t1')]
         unifyConstraints types (constraints ++ cs) (counter+1)
     -- U ((t1 ~C μX.t2) : cs), t1 ∉ Vars(μX.t2)
     -- => U ((t11 ~C t2) : (t1 =C μX.t11))
     | isVarType t1 && isMuType t2 && not (belongs t1 t2) = do
-        let    t = newTypeVar counter
+        let t = newTypeVar counter
         let (Mu var t2') = t2
         let constraints = [Consistency t t2', Equality t1 (Mu var t)]
         unifyConstraints types (constraints ++ cs) (counter+2)
@@ -208,14 +208,14 @@ unifyConstraints types (Equality t1 t2 : cs) counter
     -- U ((t11 -> t12 =C t21 -> t22) : cs)
     -- => U ((t12 =C t22) : (t11 =C t21) : cs)
     | isArrowType t1 && isArrowType t2 = do
-        let    (ArrowType t11 t12) = t1
+        let (ArrowType t11 t12) = t1
         let (ArrowType t21 t22) = t2
         let constraints = [Equality t12 t22, Equality t11 t21]
         unifyConstraints types (constraints ++ cs) counter
     -- U ((t11 × t12 =C t21 × t22) : cs)
     -- => U ((t12 =C t22) : (t11 =C t21) : cs)
     | isProductType t1 && isProductType t2 = do
-        let    (ProductType t11 t12) = t1
+        let (ProductType t11 t12) = t1
         let (ProductType t21 t22) = t2
         let constraints = [Equality t12 t22, Equality t11 t21]
         unifyConstraints types (constraints ++ cs) counter
@@ -236,7 +236,7 @@ unifyConstraints types (Equality t1 t2 : cs) counter
     -- U ((t11 + t12 =C t21 + t22) : cs)
     -- => U ((t12 =C t22) :(t11 =C t21) : cs)
     | isSumType t1 && isSumType t2 = do
-        let    (SumType t11 t12) = t1
+        let (SumType t11 t12) = t1
         let (SumType t21 t22) = t2
         let constraints = [Equality t12 t22, Equality t11 t21]
         unifyConstraints types (constraints ++ cs) counter
@@ -250,7 +250,7 @@ unifyConstraints types (Equality t1 t2 : cs) counter
     -- U (([t1] =C [t2]) : cs)
     -- => U ((t1 =C t2) : cs)
     | isListType t1 && isListType t2 = do
-        let    (ListType t1') = t1
+        let (ListType t1') = t1
         let (ListType t2') = t2
         let constraints = [Equality t1' t2']
         unifyConstraints types (constraints ++ cs) counter
@@ -290,16 +290,16 @@ belongs (VarType var) typ
         let (ProductType t21 t22) = typ
         in belongs (VarType var) t21 || belongs (VarType var) t22
     | isTupleType typ =
-        let    TupleType types = typ
+        let TupleType types = typ
         in any (belongs $ VarType var) types
     | isRecordType typ =
-        let    (_, types) = fromRecordType typ
+        let (_, types) = fromRecordType typ
         in any (belongs $ VarType var) types
     | isSumType typ =
         let (SumType t21 t22) = typ
         in belongs (VarType var) t21 || belongs (VarType var) t22
     | isVariantType typ =
-        let    (_, types) = fromVariantType typ
+        let (_, types) = fromVariantType typ
         in any (belongs $ VarType var) types
     | isListType typ =
         let (ListType t) = typ
